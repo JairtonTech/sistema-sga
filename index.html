@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE GESTÃO ADMINISTRATIVA SGA</title>
-    <!-- VERSÃO 4.1 - UNIFICAÇÃO DE TÍTULOS E LAYOUT EM LINHA ÚNICA -->
+    <!-- VERSÃO 4.2 - EXPANSÃO DO MÓDULO DE AUTENTICAÇÃO -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,8 +110,8 @@
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3"
   }
 }
 </script>
@@ -122,6 +122,7 @@
     <script>
         const state = {
             view: 'AUTH', 
+            authSubView: 'LOGIN', // 'LOGIN' | 'REGISTER' | 'RECOVER'
             user: null, 
             processes: [],
             processSearch: '',
@@ -241,6 +242,66 @@
         }
 
         function renderLogin() {
+            let authContent = '';
+            
+            if (state.authSubView === 'LOGIN') {
+                authContent = `
+                    <form onsubmit="handleLogin(event)" class="p-10 space-y-6 animate-fadeInScale">
+                        ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[10px] font-bold uppercase">${state.loginError}</p>` : ''}
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário Institucional</label>
+                            <input id="l-user" type="text" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all" placeholder="nome.sobrenome">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Senha</label>
+                            <input id="l-pass" type="password" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Autenticar</button>
+                        
+                        <div class="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-50">
+                            <button type="button" onclick="state.authSubView='REGISTER';render();" class="flex-1 text-[10px] font-black uppercase text-sps-primary hover:text-sps-dark transition-colors tracking-widest py-2">Solicitar Registro</button>
+                            <button type="button" onclick="state.authSubView='RECOVER';render();" class="flex-1 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-colors tracking-widest py-2">Recuperar Acesso</button>
+                        </div>
+                    </form>
+                `;
+            } else if (state.authSubView === 'REGISTER') {
+                authContent = `
+                    <form onsubmit="alert('Solicitação de acesso enviada para análise da administração.');state.authSubView='LOGIN';render();" class="p-10 space-y-5 animate-fadeInScale">
+                        <h3 class="text-xs font-black text-sps-dark uppercase tracking-widest mb-4">Solicitação de Novo Acesso</h3>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Nome Completo</label>
+                            <input type="text" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs" placeholder="Seu nome completo">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário Desejado</label>
+                            <input type="text" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs" placeholder="nome.sobrenome">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Unidade Operacional</label>
+                            <select required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs appearance-none bg-white">
+                                <option value="">Selecione sua unidade...</option>
+                                ${UNITS.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Enviar Solicitação</button>
+                        <button type="button" onclick="state.authSubView='LOGIN';render();" class="w-full text-[10px] font-black uppercase text-slate-400 tracking-widest py-2">Voltar ao Login</button>
+                    </form>
+                `;
+            } else if (state.authSubView === 'RECOVER') {
+                authContent = `
+                    <form onsubmit="alert('As instruções de recuperação foram enviadas para o e-mail institucional associado.');state.authSubView='LOGIN';render();" class="p-10 space-y-6 animate-fadeInScale">
+                        <h3 class="text-xs font-black text-sps-dark uppercase tracking-widest mb-4">Recuperação de Credenciais</h3>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold leading-relaxed mb-4">Informe seu usuário ou CPF para receber o link de redefinição.</p>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário ou Matrícula</label>
+                            <input type="text" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all" placeholder="nome.sobrenome ou 000.000.000-00">
+                        </div>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Solicitar Link</button>
+                        <button type="button" onclick="state.authSubView='LOGIN';render();" class="w-full text-[10px] font-black uppercase text-slate-400 tracking-widest py-2">Voltar ao Login</button>
+                    </form>
+                `;
+            }
+
             return `
                 <div class="min-h-screen flex flex-col bg-sps-light fade-in">
                     <div class="flex-1 flex items-center justify-center p-4">
@@ -249,18 +310,30 @@
                                 <div class="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-6 border border-white/20">SGA</div>
                                 <h1 class="text-xl md:text-2xl font-bold uppercase tracking-widest whitespace-nowrap">Sistema de Gestão Administrativa</h1>
                             </div>
-                            <form onsubmit="handleLogin(event)" class="p-10 space-y-6">
-                                ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[10px] font-bold uppercase">${state.loginError}</p>` : ''}
-                                <div>
-                                    <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário Institucional</label>
-                                    <input id="l-user" type="text" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all" placeholder="nome.sobrenome">
+                            
+                            ${authContent}
+
+                            <!-- Área Informativa para Preenchimento de Espaço -->
+                            <div class="bg-slate-50 p-8 border-t border-slate-100">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Informativo Institucional</h4>
+                                        <p class="text-[9px] font-bold text-slate-500 uppercase leading-relaxed opacity-70">O acesso a este sistema é restrito aos servidores e colaboradores autorizados da CPSB e unidades vinculadas.</p>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Segurança de Dados</h4>
+                                        <p class="text-[9px] font-bold text-slate-500 uppercase leading-relaxed opacity-70">Todas as ações realizadas nesta plataforma são monitoradas e auditadas conforme protocolos de segurança vigentes.</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Senha</label>
-                                    <input id="l-pass" type="password" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all" placeholder="••••••••">
+                                <div class="mt-6 flex items-center justify-between">
+                                    <div class="flex gap-2">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+                                        <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+                                    </div>
+                                    <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest">SGA v4.2 Stable</span>
                                 </div>
-                                <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Autenticar</button>
-                            </form>
+                            </div>
                         </div>
                     </div>
                     ${renderFooter()}
