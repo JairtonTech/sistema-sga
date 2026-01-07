@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE GESTÃO ADMINISTRATIVA SGA</title>
-    <!-- VERSÃO 4.0 - ATUALIZAÇÃO DE TEXTOS DO DASHBOARD -->
+    <!-- VERSÃO 4.1 - UNIFICAÇÃO DE TÍTULOS E LAYOUT EM LINHA ÚNICA -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,8 +110,8 @@
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3"
+    "react": "https://esm.sh/react@^19.2.3",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
@@ -244,11 +244,10 @@
             return `
                 <div class="min-h-screen flex flex-col bg-sps-light fade-in">
                     <div class="flex-1 flex items-center justify-center p-4">
-                        <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
+                        <div class="max-w-xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
                             <div class="bg-sps-dark p-12 text-center text-white flex flex-col items-center justify-center">
                                 <div class="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-6 border border-white/20">SGA</div>
-                                <h1 class="text-xl font-bold uppercase tracking-widest">Sistema de Gestão</h1>
-                                <p class="text-[10px] opacity-60 uppercase font-black tracking-tighter mt-1">Administrativa</p>
+                                <h1 class="text-xl md:text-2xl font-bold uppercase tracking-widest whitespace-nowrap">Sistema de Gestão Administrativa</h1>
                             </div>
                             <form onsubmit="handleLogin(event)" class="p-10 space-y-6">
                                 ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[10px] font-bold uppercase">${state.loginError}</p>` : ''}
@@ -275,8 +274,7 @@
                     <div class="flex items-center gap-5 cursor-pointer group" onclick="state.view='DASHBOARD';render();">
                         <div class="w-10 h-10 bg-sps-dark rounded-xl flex items-center justify-center text-white font-black text-xs transition-transform group-hover:scale-105">SGA</div>
                         <div class="hidden md:block">
-                            <h1 class="text-sm font-black text-slate-800 uppercase tracking-tight leading-none mb-0.5">Gestão Administrativa</h1>
-                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Plataforma Unificada</p>
+                            <h1 class="text-sm font-black text-slate-800 uppercase tracking-tight whitespace-nowrap">Gestão Administrativa <span class="text-slate-400 opacity-60 ml-2 font-bold tracking-widest">| Plataforma Unificada</span></h1>
                         </div>
                     </div>
                     <div class="flex items-center gap-8">
