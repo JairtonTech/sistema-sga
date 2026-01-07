@@ -12,17 +12,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) => {
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center -mt-10 animate-fadeIn text-center">
-      <div className="max-w-4xl w-full space-y-12 px-4">
+      <div className="max-w-4xl w-full space-y-10 px-4">
         <div className="space-y-4">
-          <h1 className="text-5xl md:text-7xl font-black text-sps-dark uppercase tracking-tighter leading-none">
+          <h1 className="text-4xl md:text-5xl font-black text-slate-800 uppercase tracking-tighter leading-none">
             Painel de Controle
           </h1>
-          <p className="text-xl md:text-2xl text-slate-400 font-medium uppercase tracking-wider">
-            Bem-vindo ao Sistema Administrativo.
+          <h2 className="text-xl md:text-2xl text-slate-600 font-bold uppercase tracking-tight">
+            Bem-vindo ao Sistema de Gestão Administrativa
+          </h2>
+          <p className="text-sm text-slate-400 font-medium uppercase tracking-widest">
+            Escolha uma das opções abaixo para prosseguir.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
           {isAdmin && (
             <button 
               onClick={() => onNavigate('PERSONNEL')}

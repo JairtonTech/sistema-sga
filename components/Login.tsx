@@ -23,10 +23,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRequestAccess }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f0f9f1] p-4">
       <div className="max-w-lg w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-        <div className="bg-[#3b823e] p-10 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[160px]">
+        <div className="bg-[#064e3b] p-10 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[160px]">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl"></div>
+          <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-4 border border-white/20 relative z-10">SGA</div>
           <h1 className="text-xl font-bold text-white uppercase tracking-tight leading-tight relative z-10 px-4">
-            SISTEMA DE GESTÃO ADMINISTRATIVA CEPP
+            SISTEMA DE GESTÃO ADMINISTRATIVA
           </h1>
         </div>
         
@@ -79,7 +80,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRequestAccess }) => {
               Clique aqui para solicitação ou recuperação de credencial
             </button>
             <p className="text-[10px] font-semibold text-slate-400 tracking-widest mt-6 uppercase">
-              Desenvolvido por Jairton Filho
+              SGA v3.2 | Desenvolvido por Jairton Filho
             </p>
           </div>
         </form>

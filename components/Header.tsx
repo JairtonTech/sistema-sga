@@ -13,8 +13,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate }) => {
     <header className="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 shadow-sm z-10">
       <div className="flex items-center space-gap-4">
         <div className="cursor-pointer" onClick={() => onNavigate('DASHBOARD')}>
-            <h2 className="text-xs font-bold text-[#3b823e] uppercase tracking-widest mb-1 leading-none">SPS | Governo do Ceará</h2>
-            <h1 className="text-lg font-bold text-slate-800 uppercase tracking-tight leading-tight">SISTEMA DE GESTÃO ADMINISTRATIVA CEPP</h1>
+            <h1 className="text-lg font-bold text-slate-800 uppercase tracking-tight leading-tight">SISTEMA DE GESTÃO ADMINISTRATIVA</h1>
         </div>
       </div>
 
@@ -24,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate }) => {
             <p className="text-xs font-bold text-[#064e3b] uppercase leading-none">
               {user?.username}
             </p>
-            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest ${user?.role === 'ADMIN' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest ${user?.role === 'ADMIN' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
               {user?.role}
             </span>
           </div>
@@ -35,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onNavigate }) => {
         
         <button
           onClick={onLogout}
-          className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl transition-all border border-red-100 uppercase tracking-tighter"
+          className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 uppercase tracking-widest"
         >
           Sair
         </button>
