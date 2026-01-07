@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE GESTÃO ADMINISTRATIVA CEPP</title>
-    <!-- PONTO DE RESTAURAÇÃO - VERSÃO 2.1 (EDIÇÃO E EXCLUSÃO) -->
+    <!-- PONTO DE RESTAURAÇÃO - VERSÃO 2.7 (CORREÇÃO DE EXCLUSÃO E IMPORTAÇÃO) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
@@ -16,10 +17,10 @@
             extend: {
               colors: {
                 sps: {
-                  primary: '#84b48d', // Verde Oliva Suave
+                  primary: '#84b48d', 
                   dark: '#064e3b',    
                   light: '#f0f9f1',   
-                  accent: '#3b82f6'   // Azul foco
+                  accent: '#3b82f6'   
                 }
               }
             }
@@ -56,17 +57,23 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            background: transparent;
-            bottom: 0;
-            color: transparent;
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
             cursor: pointer;
-            height: auto;
-            left: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: auto;
+            accent-color: #84b48d;
+        }
+
+        tr.selected-row {
+            background-color: #f0f9f1 !important;
+        }
+
+        mark.search-highlight {
+            background-color: #fde047; /* Yellow-300 */
+            color: #000;
+            padding: 0 1px;
+            border-radius: 2px;
+            font-weight: 600;
         }
     </style>
 <script type="importmap">
@@ -91,7 +98,8 @@
             processSearch: '',
             processSortDir: 'desc',
             isRegisteringProcess: false,
-            editingIndex: null // Controla se estamos editando um processo existente
+            editingIndex: null,
+            selectedIndices: [] 
         };
 
         const AUTHORIZED_USERS = [
@@ -120,6 +128,14 @@
             const dd = String(today.getDate()).padStart(2, '0');
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const yyyy = today.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function formatDate(date) {
+            if (!(date instanceof Date)) return date;
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
             return `${dd}/${mm}/${yyyy}`;
         }
 
@@ -162,14 +178,147 @@
             }
         }
 
+        function highlight(text, query) {
+            if (!query || !text) return text;
+            const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escapedQuery})`, 'gi');
+            return text.toString().replace(regex, '<mark class="search-highlight">$1</mark>');
+        }
+
+        // --- MULTISELEÇÃO ---
+        window.handleToggleSelect = (originalIndex) => {
+            const idx = Number(originalIndex);
+            const pos = state.selectedIndices.indexOf(idx);
+            if (pos > -1) {
+                state.selectedIndices.splice(pos, 1);
+            } else {
+                state.selectedIndices.push(idx);
+            }
+            render();
+        };
+
+        window.handleToggleAll = (filteredIndicesStr) => {
+            const filteredIndices = filteredIndicesStr.split(',').map(Number);
+            const allOfFilteredSelected = filteredIndices.length > 0 && filteredIndices.every(idx => state.selectedIndices.includes(idx));
+            
+            if (allOfFilteredSelected) {
+                // Remove os filtrados da seleção
+                state.selectedIndices = state.selectedIndices.filter(idx => !filteredIndices.includes(idx));
+            } else {
+                // Adiciona os que ainda não estão
+                filteredIndices.forEach(idx => {
+                    if (!state.selectedIndices.includes(idx)) state.selectedIndices.push(idx);
+                });
+            }
+            render();
+        };
+
+        window.handleBulkDelete = () => {
+            if (state.selectedIndices.length === 0) return;
+            const count = state.selectedIndices.length;
+            if (confirm(`Atenção: Você está prestes a excluir ${count} processo(s). Deseja continuar?`)) {
+                // Filtramos a base original removendo quem está na lista de selecionados
+                state.processes = state.processes.filter((_, idx) => !state.selectedIndices.includes(idx));
+                // Limpamos a seleção
+                state.selectedIndices = [];
+                render();
+            }
+        };
+
+        // --- IMPORTAÇÃO INTELIGENTE ---
+        window.handleImportExcel = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name.toLowerCase();
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                let workbook;
+                try {
+                    if (fileName.endsWith('.html') || fileName.endsWith('.xhtml')) {
+                        const content = new TextDecoder().decode(e.target.result);
+                        workbook = XLSX.read(content, { type: 'string' });
+                    } else {
+                        const data = new Uint8Array(e.target.result);
+                        workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    }
+
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); // defval garante que colunas vazias existam
+
+                    if (jsonData.length === 0) {
+                        alert("O arquivo parece estar vazio.");
+                        return;
+                    }
+
+                    let importedCount = 0;
+                    jsonData.forEach(row => {
+                        let nup = "", data = getTodayFormatted(), descricao = "";
+
+                        Object.keys(row).forEach(key => {
+                            const normalizedKey = key.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            
+                            if (normalizedKey.includes('nup') || normalizedKey.includes('processo')) {
+                                nup = row[key];
+                            }
+                            else if (normalizedKey.includes('data') || normalizedKey.includes('date')) {
+                                data = (row[key] instanceof Date) ? formatDate(row[key]) : row[key];
+                            }
+                            // Busca por Descrição (Ajuste fino: agora captura qualquer campo que pareça ser o texto descritivo)
+                            else if (
+                                normalizedKey === 'descricao' || 
+                                normalizedKey === 'assunto' || 
+                                normalizedKey.includes('descri') || 
+                                normalizedKey.includes('detalhe') || 
+                                normalizedKey.includes('objeto') || 
+                                normalizedKey.includes('obs') ||
+                                normalizedKey.includes('resumo') ||
+                                normalizedKey.includes('texto')
+                            ) {
+                                // Se já achou uma descrição e essa nova chave for apenas 'obs', ignora. 
+                                // Caso contrário, atribui.
+                                if (!descricao || normalizedKey.includes('descri')) {
+                                    descricao = row[key];
+                                }
+                            }
+                        });
+
+                        state.processes.unshift({
+                            data: data ? data.toString() : getTodayFormatted(),
+                            nup: nup ? maskNUP(nup.toString()) : "",
+                            descricao: descricao ? descricao.toString() : ""
+                        });
+                        importedCount++;
+                    });
+
+                    alert(`${importedCount} processos importados com sucesso de ${fileName}!`);
+                    state.selectedIndices = [];
+                    render();
+                } catch (err) {
+                    console.error(err);
+                    alert("Erro ao ler arquivo. Verifique se o formato é válido.");
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+            event.target.value = "";
+        };
+
         function render() {
+            // Salva estado do foco atual para o campo de busca
+            const activeElementId = document.activeElement ? document.activeElement.id : null;
+            const selectionStart = document.activeElement ? document.activeElement.selectionStart : null;
+            const selectionEnd = document.activeElement ? document.activeElement.selectionEnd : null;
+
             const app = document.getElementById('app');
             if (state.view === 'AUTH') {
                 app.innerHTML = renderLogin();
                 return;
             }
             app.innerHTML = `
-                <div class="flex h-screen bg-slate-50 overflow-hidden">
+                <div class="flex h-screen bg-slate-50 overflow-hidden text-left">
                     <div class="flex-1 flex flex-col overflow-hidden">
                         ${renderHeader()}
                         <main class="flex-1 overflow-y-auto">
@@ -182,6 +331,17 @@
                 ${state.isRegisteringProcess ? renderProcessModal() : ''}
             `;
             
+            // Restaura foco e cursor se necessário
+            if (activeElementId) {
+                const element = document.getElementById(activeElementId);
+                if (element) {
+                    element.focus();
+                    if (selectionStart !== null && (element.type === 'text' || element.type === 'search')) {
+                        element.setSelectionRange(selectionStart, selectionEnd);
+                    }
+                }
+            }
+
             if (state.isRegisteringProcess) {
                 const dateField = document.getElementById('p-date');
                 const nupField = document.getElementById('p-nup');
@@ -189,9 +349,9 @@
 
                 if (state.editingIndex !== null) {
                     const proc = state.processes[state.editingIndex];
-                    dateField.value = proc.data;
-                    nupField.value = proc.nup;
-                    descField.value = proc.descricao;
+                    if (dateField) dateField.value = proc.data;
+                    if (nupField) nupField.value = proc.nup;
+                    if (descField) descField.value = proc.descricao;
                 } else {
                     if (dateField && !dateField.value) dateField.value = getTodayFormatted();
                     if (nupField && !nupField.value) nupField.value = "47001.";
@@ -201,7 +361,7 @@
 
         function renderLogin() {
             return `
-                <div class="min-h-screen flex items-center justify-center bg-sps-light p-4 fade-in">
+                <div class="min-h-screen flex items-center justify-center bg-sps-light p-4 fade-in text-left">
                     <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
                         <div class="bg-sps-dark p-10 text-center text-white min-h-[160px] flex items-center justify-center">
                             <h1 class="text-xl font-bold uppercase tracking-tight text-center">SISTEMA DE GESTÃO ADMINISTRATIVA CEPP</h1>
@@ -225,8 +385,8 @@
 
         function renderHeader() {
             return `
-                <header class="bg-white border-b h-20 flex items-center justify-between px-8 shadow-sm z-10">
-                    <div class="flex items-center gap-4 cursor-pointer" onclick="state.view='DASHBOARD';render();">
+                <header class="bg-white border-b h-20 flex items-center justify-between px-8 shadow-sm z-10 text-left">
+                    <div class="flex items-center gap-4 cursor-pointer" onclick="state.view='DASHBOARD';state.selectedIndices=[];render();">
                         <div class="w-10 h-10 bg-sps-dark rounded flex items-center justify-center text-white font-black text-xs uppercase">SPS</div>
                         <div>
                             <h2 class="text-[9px] font-bold text-sps-dark uppercase tracking-widest leading-none mb-1">SPS | Governo do Estado do Ceará</h2>
@@ -238,7 +398,7 @@
                             <p class="text-[10px] font-bold text-slate-900 uppercase leading-none mb-1">${state.user.username}</p>
                             <span class="text-[8px] font-bold uppercase tracking-widest ${state.user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded">${state.user.role}</span>
                         </div>
-                        <button onclick="state.view='AUTH';state.user=null;render();" class="text-[10px] font-bold text-red-600 uppercase border border-red-100 px-4 py-2 rounded-xl hover:bg-red-50 transition-all">Sair</button>
+                        <button onclick="state.view='AUTH';state.user=null;state.selectedIndices=[];render();" class="text-[10px] font-bold text-red-600 uppercase border border-red-100 px-4 py-2 rounded-xl hover:bg-red-50 transition-all">Sair</button>
                     </div>
                 </header>
             `;
@@ -257,11 +417,11 @@
         function renderDashboardHub() {
             const isAdmin = state.user.role === 'ADMIN';
             return `
-                <div class="h-full w-full flex flex-col items-center justify-center bg-slate-50/50 py-12">
+                <div class="h-full w-full flex flex-col items-center justify-center bg-slate-50/50 py-12 text-center">
                     <div class="max-w-5xl w-full text-center space-y-12 fade-in px-6">
                         <div class="space-y-4">
-                            <h1 class="text-5xl md:text-7xl font-black uppercase text-slate-800 tracking-tighter leading-none">Painel de Controle</h1>
-                            <p class="text-lg md:text-2xl text-slate-400 font-medium tracking-wide uppercase">Bem-vindo ao Sistema Administrativo.</p>
+                            <h1 class="text-5xl md:text-7xl font-black uppercase text-slate-800 tracking-tighter leading-none text-center">Painel de Controle</h1>
+                            <p class="text-lg md:text-2xl text-slate-400 font-medium tracking-wide uppercase text-center">Bem-vindo ao Sistema Administrativo.</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 max-w-4xl mx-auto">
                             ${isAdmin ? `
@@ -305,47 +465,90 @@
 
         function renderProcesses() {
             const isAdmin = state.user.role === 'ADMIN';
-            let filtered = state.processes.filter(p => p.nup.toLowerCase().includes(state.processSearch.toLowerCase()) || p.descricao.toLowerCase().includes(state.processSearch.toLowerCase()));
+            
+            const items = state.processes.map((p, idx) => ({ ...p, originalIndex: idx }));
+            const filteredItems = items.filter(p => 
+                p.nup.toLowerCase().includes(state.processSearch.toLowerCase()) || 
+                p.descricao.toLowerCase().includes(state.processSearch.toLowerCase())
+            );
+
+            filteredItems.sort((a, b) => {
+                const [da, ma, ya] = a.data.split('/');
+                const [db, mb, yb] = b.data.split('/');
+                const dateA = new Date(ya, ma - 1, da).getTime();
+                const dateB = new Date(yb, mb - 1, db).getTime();
+                return state.processSortDir === 'asc' ? dateA - dateB : dateB - dateA;
+            });
+
+            const filteredIndices = filteredItems.map(item => item.originalIndex);
+            const allOfFilteredSelected = filteredIndices.length > 0 && filteredIndices.every(idx => state.selectedIndices.includes(idx));
+            const hasSelection = state.selectedIndices.length > 0;
             const sortLabel = state.processSortDir === 'asc' ? 'CRESCENTE ↑' : 'DECRESCENTE ↓';
+
             return `
                 <div class="p-8 space-y-6 text-left">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div class="flex items-center gap-4">
-                            <button onclick="state.view='DASHBOARD';render();" class="p-2 hover:bg-slate-200 rounded-full transition-colors">←</button>
-                            <h1 class="text-2xl font-bold uppercase tracking-tight text-slate-900">Processos Suite</h1>
+                        <div class="flex items-center gap-4 text-left">
+                            <button onclick="state.view='DASHBOARD';state.selectedIndices=[];render();" class="p-2 hover:bg-slate-200 rounded-full transition-colors">←</button>
+                            <h1 class="text-2xl font-bold uppercase tracking-tight text-slate-900">
+                                Processos Suite
+                                <span class="ml-3 bg-slate-100 text-slate-400 px-3 py-1 rounded-full text-[10px] font-black tracking-widest">TOTAL: ${state.processes.length}</span>
+                            </h1>
                         </div>
                         <div class="flex items-center gap-3">
-                            <input type="text" placeholder="Buscar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="px-4 py-3 rounded-xl border border-slate-300 text-xs outline-none focus:ring-2 focus:ring-sps-primary w-64 shadow-sm">
-                            ${isAdmin ? `<button onclick="state.editingIndex=null;state.isRegisteringProcess=true;render();" class="bg-sps-primary text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg active:scale-95">Cadastrar</button>` : ''}
+                            <input type="text" id="proc-search-input" placeholder="Buscar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="px-4 py-3 rounded-xl border border-slate-300 text-xs outline-none focus:ring-2 focus:ring-sps-primary w-48 lg:w-64 shadow-sm">
+                            ${isAdmin ? `
+                                <input type="file" id="excel-import" class="hidden" accept=".xlsx, .xls, .ods, .html, .xhtml" onchange="handleImportExcel(event)">
+                                <button onclick="document.getElementById('excel-import').click()" class="bg-emerald-600 text-white px-5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg active:scale-95 flex items-center gap-2 transition-all">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                    Importar
+                                </button>
+                                ${hasSelection ? `
+                                    <button onclick="handleBulkDelete()" class="bg-red-400 text-white px-5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg active:scale-95 flex items-center gap-2 transition-all">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        Excluir (${state.selectedIndices.length})
+                                    </button>
+                                ` : ''}
+                                <button onclick="state.editingIndex=null;state.isRegisteringProcess=true;render();" class="bg-sps-primary text-white px-5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all">Cadastrar</button>
+                            ` : ''}
                         </div>
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <table class="w-full text-left text-[11px] border-collapse">
                             <thead class="bg-slate-50 font-bold uppercase border-b-2 border-slate-100 sticky top-0">
                                 <tr>
+                                    ${isAdmin ? `
+                                        <th class="px-6 py-5 w-12 text-center">
+                                            <input type="checkbox" ${allOfFilteredSelected ? 'checked' : ''} onchange="handleToggleAll('${filteredIndices.join(',')}')">
+                                        </th>
+                                    ` : ''}
                                     <th class="px-6 py-5 cursor-pointer w-32" onclick="state.processSortDir=state.processSortDir==='asc'?'desc':'asc';render();">Data <span class="ml-1 text-sps-dark">${sortLabel}</span></th>
                                     <th class="px-6 py-5 w-64 border-l">NUP</th>
                                     <th class="px-6 py-5 border-l">Descrição</th>
-                                    ${isAdmin ? `<th class="px-6 py-5 border-l w-24 text-center">Ações</th>` : ''}
+                                    ${isAdmin ? `<th class="px-6 py-5 border-l w-24 text-center text-xs">Ações</th>` : ''}
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
-                                ${filtered.length > 0 ? filtered.map((p, idx) => `
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="px-6 py-4 text-slate-500 font-medium">${p.data}</td>
-                                        <td class="px-6 py-4 font-mono text-sps-dark font-bold">${p.nup || '---'}</td>
-                                        <td class="px-6 py-4 text-slate-800 uppercase leading-tight font-medium">${p.descricao}</td>
+                                ${filteredItems.length > 0 ? filteredItems.map((p) => {
+                                    const isSelected = state.selectedIndices.includes(p.originalIndex);
+                                    return `
+                                    <tr class="hover:bg-slate-50 transition-colors ${isSelected ? 'selected-row' : ''}">
                                         ${isAdmin ? `
-                                            <td class="px-6 py-4 text-center border-l space-x-2">
-                                                <button onclick="handleStartEdit(${idx})" class="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                                            <td class="px-6 py-4 text-center">
+                                                <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="handleToggleSelect(${p.originalIndex})">
+                                            </td>
+                                        ` : ''}
+                                        <td class="px-6 py-4 text-slate-500 font-medium">${p.data}</td>
+                                        <td class="px-6 py-4 font-mono text-sps-dark font-bold tracking-tight">${highlight(p.nup || '---', state.processSearch)}</td>
+                                        <td class="px-6 py-4 text-slate-800 uppercase leading-tight font-medium max-w-md break-words">${highlight(p.descricao || '', state.processSearch) || '<span class="text-slate-200 italic">sem descrição</span>'}</td>
+                                        ${isAdmin ? `
+                                            <td class="px-6 py-4 text-center border-l">
+                                                <button onclick="handleStartEdit(${p.originalIndex})" class="p-1.5 text-blue-400 hover:bg-blue-50 rounded transition-colors" title="Editar">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                                </button>
-                                                <button onclick="handleDeleteProc(${idx})" class="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors" title="Excluir">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                 </button>
                                             </td>
                                         ` : ''}
-                                    </tr>`).join('') : `<tr><td colspan="${isAdmin ? 4 : 3}" class="px-6 py-20 text-center text-slate-300 italic text-xs uppercase font-bold">Nenhum processo encontrado.</td></tr>`}
+                                    </tr>`}).join('') : `<tr><td colspan="${isAdmin ? 5 : 3}" class="px-6 py-20 text-center text-slate-300 italic text-xs uppercase font-bold tracking-widest">Nenhum processo encontrado.</td></tr>`}
                             </tbody>
                         </table>
                     </div>
@@ -356,7 +559,7 @@
         function renderProcessModal() {
             const isEditing = state.editingIndex !== null;
             return `
-                <div class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+                <div class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in text-left">
                     <div class="bg-white w-full max-w-md rounded-[20px] shadow-2xl overflow-hidden animate-fadeInScale">
                         <div class="bg-sps-primary py-5 text-white text-center">
                             <h3 class="text-[13px] font-bold uppercase tracking-widest">${isEditing ? 'Editar Registro Suite' : 'Novo Registro Suite'}</h3>
@@ -404,7 +607,7 @@
 
         function renderUnitDetail() {
             const u = state.selectedUnit;
-            return `<div class="p-8"><button onclick="state.view='PERSONNEL';render();" class="text-xs font-bold text-sps-dark uppercase mb-4">← Voltar</button><h1 class="text-2xl font-bold uppercase">${u.name}</h1><p class="mt-8 text-slate-400 italic text-xs uppercase">Base de dados limpa.</p></div>`;
+            return `<div class="p-8 text-left"><button onclick="state.view='PERSONNEL';render();" class="text-xs font-bold text-sps-dark uppercase mb-4">← Voltar</button><h1 class="text-2xl font-bold uppercase">${u.name}</h1><p class="mt-8 text-slate-400 italic text-xs uppercase">Base de dados limpa.</p></div>`;
         }
 
         window.handleLogin = (e) => {
@@ -417,16 +620,9 @@
         };
 
         window.handleStartEdit = (idx) => {
-            state.editingIndex = idx;
+            state.editingIndex = Number(idx);
             state.isRegisteringProcess = true;
             render();
-        }
-
-        window.handleDeleteProc = (idx) => {
-            if (confirm('Tem certeza que deseja excluir este processo?')) {
-                state.processes.splice(idx, 1);
-                render();
-            }
         }
 
         window.handleSaveProc = (e) => {
@@ -445,6 +641,7 @@
             
             state.isRegisteringProcess = false;
             state.editingIndex = null;
+            state.selectedIndices = [];
             render();
         };
 
