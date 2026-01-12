@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE GESTÃO ADMINISTRATIVA SGA</title>
-    <!-- VERSÃO 7.3 - LIMPEZA VISUAL E TRUNCAMENTO DE LINHA ÚNICA -->
+    <!-- VERSÃO 9.5 - RESPONSIVIDADE TOTAL (MOBILE-FIRST) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,17 +36,15 @@
             background-color: #f8fafc;
             margin: 0;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
-        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-        .stagger-1 { animation-delay: 0.1s; }
-        .stagger-2 { animation-delay: 0.2s; }
-        
+        .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(20px); } 
+            from { opacity: 0; transform: translateY(10px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
         
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #84b48d; border-radius: 10px; }
 
@@ -55,24 +53,22 @@
         }
 
         .status-pill {
-            padding: 6px 14px;
+            padding: 4px 10px;
             border-radius: 9999px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            gap: 6px;
         }
         
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background-color: currentColor;
-            box-shadow: 0 0 8px currentColor;
         }
 
         .text-gradient {
@@ -82,28 +78,54 @@
         }
 
         .glass-header {
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
         }
 
-        .animate-fadeInScale { animation: fadeInScale 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        
-        .tab-active {
-            border-bottom: 3px solid #064e3b;
-            color: #064e3b;
-        }
-
-        /* TRUNCAMENTO EM LINHA ÚNICA NA TABELA */
         .demand-description-cell {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 450px;
+            max-width: 200px; /* Base mobile */
             display: block;
-            line-height: 1.5;
         }
+        @media (min-width: 768px) {
+            .demand-description-cell { max-width: 450px; }
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #064e3b;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: none;
+        }
+
+        /* Fix para tabelas no mobile */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 16px;
+        }
+        .min-w-table { min-width: 850px; }
+
+        /* Estilo de card interativo */
+        .nav-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .nav-card:active { transform: scale(0.96); }
     </style>
 <script type="importmap">
 {
@@ -114,27 +136,25 @@
 }
 </script>
 </head>
-<body class="dashboard-bg">
-    <div id="app"></div>
+<body class="dashboard-bg min-h-screen flex flex-col">
+    <div id="app" class="flex-1 flex flex-col min-h-screen"></div>
+    <div id="toast">Copiado com Sucesso!</div>
 
     <script>
-        const ADMIN_EMAIL = 'jairton.beserra@sps.ce.gov.br';
-
         const state = {
             view: 'AUTH', 
-            authSubView: 'LOGIN', 
             user: null, 
             processes: [],
             demands: [], 
             processSearch: '',
             demandSearch: '',
             demandStatusFilter: 'ALL',
+            demandUnitFilter: 'ALL',
             isRegisteringProcess: false,
             isRegisteringDemand: false,
             viewingDemandDetailIndex: null,
             editingIndex: null,
             editingDemandIndex: null,
-            isSubmitting: false,
             loginError: null
         };
 
@@ -163,9 +183,9 @@
 
         const DEMAND_TYPES = ["Manutenção", "Administrativo", "RH", "Infraestrutura", "Equipamentos", "Outros"];
         const DEMAND_STATUS = [
-            { id: 'PENDING', label: 'Pendente', color: 'text-red-600 bg-red-100 border-red-200' },
-            { id: 'PROGRESS', label: 'Em Andamento', color: 'text-amber-600 bg-amber-100 border-amber-200' },
-            { id: 'DONE', label: 'Concluído', color: 'text-emerald-600 bg-emerald-100 border-emerald-200' }
+            { id: 'PENDING', label: 'Pendente', color: 'text-red-600 bg-red-50 border-red-100' },
+            { id: 'PROGRESS', label: 'Andamento', color: 'text-amber-600 bg-amber-50 border-amber-100' },
+            { id: 'DONE', label: 'Concluído', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
         ];
 
         function getTodayFormatted() {
@@ -174,6 +194,119 @@
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const yyyy = today.getFullYear();
             return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function excelDateToJSDate(serial) {
+            if (typeof serial === 'string' && serial.includes('/')) return serial;
+            const utc_days = Math.floor(serial - 25569);
+            const utc_value = utc_days * 86400;
+            const date_info = new Date(utc_value * 1000);
+            const fractional_day = serial - Math.floor(serial) + 0.0000001;
+            let total_seconds = Math.floor(86400 * fractional_day);
+            const seconds = total_seconds % 60;
+            total_seconds -= seconds;
+            const hours = Math.floor(total_seconds / (60 * 60));
+            const minutes = Math.floor(total_seconds / 60) % 60;
+            const d = new Date(date_info.getFullYear(), date_info.getMonth(), date_info.getDate(), hours, minutes, seconds);
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function getSmartValue(item, possibleKeys, isDate = false) {
+            const normalize = (s) => s.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedTargets = possibleKeys.map(normalize);
+            for (const key in item) {
+                if (normalizedTargets.includes(normalize(key))) {
+                    let val = item[key];
+                    if (val === null || val === undefined) return isDate ? getTodayFormatted() : "";
+                    if (isDate) {
+                        if (val instanceof Date) {
+                            const dd = String(val.getDate()).padStart(2, '0');
+                            const mm = String(val.getMonth() + 1).padStart(2, '0');
+                            const yyyy = val.getFullYear();
+                            return `${dd}/${mm}/${yyyy}`;
+                        }
+                        if (typeof val === 'number') return excelDateToJSDate(val);
+                        if (typeof val === 'string') {
+                            val = val.trim();
+                            if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
+                            const parsed = new Date(val);
+                            if (!isNaN(parsed.getTime())) {
+                                const dd = String(parsed.getDate()).padStart(2, '0');
+                                const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+                                const yyyy = parsed.getFullYear();
+                                return `${dd}/${mm}/${yyyy}`;
+                            }
+                        }
+                        return getTodayFormatted();
+                    }
+                    return val.toString().trim();
+                }
+            }
+            return isDate ? getTodayFormatted() : "";
+        }
+
+        function dateToTimestamp(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return 0;
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) return 0;
+            return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+        }
+
+        window.handleNupClick = (event, nup) => {
+            if (nup && nup !== '---') {
+                navigator.clipboard.writeText(nup).then(() => {
+                    showToast();
+                });
+            }
+        };
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+
+        window.handleImportFile = (event, targetType) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                if (targetType === 'PROCESSES') importProcesses(jsonData);
+                else if (targetType === 'DEMANDS') importDemands(jsonData);
+                event.target.value = '';
+            };
+            reader.readAsBinaryString(file);
+        };
+
+        function importProcesses(data) {
+            const mapped = data.map(item => ({
+                data: getSmartValue(item, ['Data', 'Data Registro', 'Dia'], true),
+                nup: getSmartValue(item, ['NUP', 'Processo', 'Numero']),
+                descricao: getSmartValue(item, ['Descrição', 'Assunto', 'Detalhe'])
+            })).filter(p => p.descricao || p.nup);
+            state.processes = [...mapped, ...state.processes];
+            alert('Importado!'); render();
+        }
+
+        function importDemands(data) {
+            const mapped = data.map(item => {
+                const uInput = getSmartValue(item, ['Unidade', 'Local']);
+                const uFound = UNITS.find(u => u.name.toLowerCase().includes(uInput.toLowerCase()));
+                return {
+                    data: getSmartValue(item, ['Data', 'Dia'], true),
+                    unidade: uFound ? uFound.id : '1',
+                    tipo: getSmartValue(item, ['Tipo', 'Categoria']) || 'Outros',
+                    descricao: getSmartValue(item, ['Descrição', 'Atividade']),
+                    status: (getSmartValue(item, ['Status']) || 'PENDING').toUpperCase()
+                };
+            }).filter(d => d.descricao);
+            state.demands = [...mapped, ...state.demands];
+            alert('Importado!'); render();
         }
 
         window.maskNUP = (v) => {
@@ -202,16 +335,12 @@
             if (state.view === 'AUTH') { app.innerHTML = renderLogin(); return; }
 
             app.innerHTML = `
-                <div class="flex flex-col h-screen overflow-hidden text-left">
-                    <div class="flex-1 flex overflow-hidden">
-                        <div class="flex-1 flex flex-col overflow-hidden">
-                            ${renderHeader()}
-                            <main class="flex-1 overflow-y-auto relative bg-slate-50/50">
-                                <div class="absolute inset-0 bg-grid-pattern opacity-[0.03] pointer-events-none"></div>
-                                <div class="h-full relative z-10">${renderContent()}</div>
-                            </main>
-                        </div>
-                    </div>
+                <div class="flex flex-col min-h-screen">
+                    ${renderHeader()}
+                    <main class="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10 relative z-10">
+                        <div class="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none"></div>
+                        <div class="max-w-7xl mx-auto w-full">${renderContent()}</div>
+                    </main>
                     ${renderFooter()}
                 </div>
                 ${state.isRegisteringProcess ? renderProcessModal() : ''}
@@ -220,53 +349,287 @@
             `;
         }
 
-        function renderFooter() {
-            return `<footer class="bg-white/80 backdrop-blur-md border-t border-slate-100 py-4 px-10 flex flex-col sm:flex-row items-center justify-between gap-4 z-50">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Desenvolvido por <span class="text-sps-dark">Jairton Filho</span> © 2025</p>
+        function renderHeader() {
+            return `<header class="glass-header h-16 md:h-20 flex items-center justify-between px-4 md:px-10 sticky top-0 z-[100]">
+                <div class="flex items-center gap-3 md:gap-5 cursor-pointer" onclick="state.view='DASHBOARD';render();">
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-sps-dark rounded-lg md:rounded-xl flex items-center justify-center text-white font-black text-[10px] md:text-xs shadow-md">SGA</div>
+                    <h1 class="text-[10px] md:text-sm font-black text-slate-800 uppercase tracking-tighter">Gestão Administrativa</h1>
                 </div>
-                <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">SGA v7.3 Active</span>
+                <div class="flex items-center gap-4 md:gap-8">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-[10px] font-black text-slate-900 uppercase leading-none">Olá, <span class="text-sps-primary">${state.user.name.split(' ')[0]}</span></p>
+                        <span class="text-[8px] font-black uppercase text-slate-400">${state.user.role}</span>
+                    </div>
+                    <button onclick="state.view='AUTH';state.user=null;render();" class="text-[8px] md:text-[9px] font-black text-white bg-red-500 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl uppercase tracking-widest shadow-sm hover:bg-red-600 transition-colors">Sair</button>
+                </div>
+            </header>`;
+        }
+
+        function renderFooter() {
+            return `<footer class="bg-white/90 border-t border-slate-100 py-4 px-4 md:px-10 flex flex-col md:flex-row items-center justify-between gap-3 text-center">
+                <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Desenvolvido por <span class="text-sps-dark">Jairton Filho</span> © 2025</p>
+                <span class="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest">SGA v9.5 Active</span>
             </footer>`;
         }
 
         function renderLogin() {
             return `<div class="min-h-screen flex items-center justify-center p-4 bg-sps-light">
-                <div class="max-w-xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border">
-                    <div class="bg-sps-dark p-12 text-center text-white">
-                        <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20 font-black">SGA</div>
-                        <h1 class="text-xl font-bold uppercase tracking-widest leading-tight">Sistema de Gestão Administrativa</h1>
+                <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border">
+                    <div class="bg-sps-dark p-8 md:p-12 text-center text-white">
+                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/20 font-black">SGA</div>
+                        <h1 class="text-sm md:text-xl font-bold uppercase tracking-widest">Sistema de Gestão</h1>
                     </div>
-                    <form onsubmit="handleLogin(event)" class="p-10 space-y-6 animate-fadeInScale">
-                        ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[10px] font-bold uppercase">${state.loginError}</p>` : ''}
+                    <form onsubmit="handleLogin(event)" class="p-6 md:p-10 space-y-6">
+                        ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[9px] font-bold uppercase">${state.loginError}</p>` : ''}
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário</label>
-                            <input id="l-user" type="text" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 outline-none text-sm" placeholder="nome.sobrenome">
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase">Usuário</label>
+                            <input id="l-user" type="text" required class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" placeholder="nome.sobrenome">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Senha</label>
-                            <input id="l-pass" type="password" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 outline-none text-sm" placeholder="••••••••">
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase">Senha</label>
+                            <input id="l-pass" type="password" required class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" placeholder="••••••••">
                         </div>
-                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-2xl font-bold uppercase text-xs tracking-widest">Autenticar</button>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-4 rounded-xl font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-transform">Autenticar</button>
                     </form>
                 </div>
             </div>`;
         }
 
-        function renderHeader() {
-            return `<header class="glass-header h-20 flex items-center justify-between px-10 z-50">
-                <div class="flex items-center gap-5 cursor-pointer group" onclick="state.view='DASHBOARD';render();">
-                    <div class="w-10 h-10 bg-sps-dark rounded-xl flex items-center justify-center text-white font-black text-xs">SGA</div>
-                    <h1 class="text-sm font-black text-slate-800 uppercase tracking-tight hidden md:block">Gestão Administrativa</h1>
+        function renderDashboardHub() {
+            const isAdmin = state.user.role === 'ADMIN';
+            return `<div class="space-y-8 md:space-y-12 py-4 md:py-10">
+                <h1 class="text-3xl md:text-5xl font-black uppercase text-gradient tracking-tighter text-center">Painel Central</h1>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                    ${isAdmin ? `<button onclick="state.view='PERSONNEL';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[180px] md:h-72 shadow-lg">
+                        <div class="w-12 h-12 bg-sps-light text-sps-dark rounded-xl flex items-center justify-center mb-6 group-hover:bg-sps-dark group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-width="2"/></svg></div>
+                        <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Relação Pessoal</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Gestão de Servidores</p></div>
+                    </button>` : ''}
+                    <button onclick="state.view='PROCESSES';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[180px] md:h-72 shadow-lg">
+                        <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500 group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2"/></svg></div>
+                        <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Processos Suite</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Consulta NUP</p></div>
+                    </button>
+                    <button onclick="state.view='DEMANDS';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[180px] md:h-72 shadow-lg sm:col-span-2 lg:col-span-1">
+                        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg></div>
+                        <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Demandas</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Histórico de Unidades</p></div>
+                    </button>
                 </div>
-                <div class="flex items-center gap-8">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-[10px] font-black text-slate-900 uppercase leading-none">Olá, <span class="text-sps-primary">${state.user.name.split(' ')[0]}</span></p>
-                        <span class="text-[8px] font-black uppercase text-slate-400">${state.user.role}</span>
+            </div>`;
+        }
+
+        function renderDemands() {
+            const counts = { TOTAL: state.demands.length, PENDING: state.demands.filter(d => d.status === 'PENDING').length, PROGRESS: state.demands.filter(d => d.status === 'PROGRESS').length, DONE: state.demands.filter(d => d.status === 'DONE').length };
+            const filtered = state.demands.filter(d => {
+                const sMatch = d.descricao.toLowerCase().includes(state.demandSearch.toLowerCase()) || d.tipo.toLowerCase().includes(state.demandSearch.toLowerCase());
+                const statusMatch = state.demandStatusFilter === 'ALL' || d.status === state.demandStatusFilter;
+                const uMatch = state.demandUnitFilter === 'ALL' || d.unidade === state.demandUnitFilter;
+                return sMatch && statusMatch && uMatch;
+            }).sort((a, b) => dateToTimestamp(b.data) - dateToTimestamp(a.data));
+
+            return `<div class="space-y-6 fade-in">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-center gap-4">
+                        <button onclick="state.view='DASHBOARD';render();" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors">←</button>
+                        <div>
+                            <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Demandas</h1>
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Controle de Unidades</p>
+                        </div>
                     </div>
-                    <button onclick="state.view='AUTH';state.user=null;render();" class="text-[9px] font-black text-white bg-red-500 px-6 py-3 rounded-xl uppercase tracking-widest">Sair</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="flex-1 bg-emerald-600 text-white px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md cursor-pointer hover:bg-emerald-700 text-center">
+                            Importar
+                            <input type="file" class="hidden" accept=".xlsx" onchange="handleImportFile(event, 'DEMANDS')">
+                        </label>
+                        <button onclick="handleStartCreateDemand()" class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Nova Atividade</button>
+                    </div>
                 </div>
-            </header>`;
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[7px] font-black text-slate-400 mb-1 uppercase">Total</p><h4 class="text-xl md:text-2xl font-black">${counts.TOTAL}</h4></div>
+                    <div class="bg-red-50 p-4 md:p-5 rounded-2xl border border-red-100 shadow-sm"><p class="text-[7px] font-black text-red-400 mb-1 uppercase">Pendentes</p><h4 class="text-xl md:text-2xl font-black text-red-600">${counts.PENDING}</h4></div>
+                    <div class="bg-amber-50 p-4 md:p-5 rounded-2xl border border-amber-100 shadow-sm"><p class="text-[7px] font-black text-amber-500 mb-1 uppercase">Andamento</p><h4 class="text-xl md:text-2xl font-black text-amber-600">${counts.PROGRESS}</h4></div>
+                    <div class="bg-emerald-50 p-4 md:p-5 rounded-2xl border border-emerald-100 shadow-sm"><p class="text-[7px] font-black text-emerald-500 mb-1 uppercase">Concluído</p><h4 class="text-xl md:text-2xl font-black text-emerald-600">${counts.DONE}</h4></div>
+                </div>
+
+                <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
+                    <div class="px-6 py-4 md:py-6 border-b flex flex-col md:flex-row justify-between gap-4">
+                        <div class="flex items-center gap-4 overflow-x-auto pb-2 md:pb-0 scroll-hide">
+                            <button onclick="state.demandStatusFilter='ALL';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'ALL' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Todas</button>
+                            <button onclick="state.demandStatusFilter='PENDING';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'PENDING' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Pendente</button>
+                            <button onclick="state.demandStatusFilter='PROGRESS';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'PROGRESS' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Andamento</button>
+                            <button onclick="state.demandStatusFilter='DONE';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'DONE' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Concluído</button>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <select onchange="state.demandUnitFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
+                                <option value="ALL">Todas Unidades</option>
+                                ${UNITS.map(u => `<option value="${u.id}" ${state.demandUnitFilter === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                            </select>
+                            <input type="text" placeholder="Pesquisar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-4 py-2 rounded-xl border border-slate-200 text-xs w-full sm:w-48 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="min-w-table w-full text-left text-[10px] md:text-[11px]">
+                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400">
+                                <tr>
+                                    <th class="px-6 py-4 w-28">Data</th>
+                                    <th class="px-6 py-4 w-48">Unidade</th>
+                                    <th class="px-6 py-4">Descrição</th>
+                                    <th class="px-6 py-4 w-32">Status</th>
+                                    <th class="px-6 py-4 w-20 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                ${filtered.map(d => {
+                                    const status = DEMAND_STATUS.find(s => s.id === d.status) || DEMAND_STATUS[0];
+                                    const uName = UNITS.find(u => u.id === d.unidade)?.name || 'N/A';
+                                    return `<tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="px-6 py-4 text-slate-400 font-bold">${d.data}</td>
+                                        <td class="px-6 py-4"><span class="text-sps-dark font-black uppercase leading-tight">${uName}</span></td>
+                                        <td class="px-6 py-4 cursor-pointer" onclick="handleViewDemandDetail(${state.demands.indexOf(d)})">
+                                            <span class="demand-description-cell text-slate-800 font-medium">${d.descricao}</span>
+                                        </td>
+                                        <td class="px-6 py-4"><div class="status-pill ${status.color}"><div class="status-dot"></div>${status.label}</div></td>
+                                        <td class="px-6 py-4 text-center"><button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black uppercase text-[9px] hover:underline">Editar</button></td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderProcesses() {
+            const canEdit = state.user.role === 'ADMIN';
+            const filtered = state.processes
+                .filter(p => p.nup.toLowerCase().includes(state.processSearch.toLowerCase()) || p.descricao.toLowerCase().includes(state.processSearch.toLowerCase()))
+                .sort((a, b) => dateToTimestamp(b.data) - dateToTimestamp(a.data));
+
+            return `<div class="space-y-6 fade-in">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-center gap-4">
+                        <button onclick="state.view='DASHBOARD';render();" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100">←</button>
+                        <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Processos Suite</h1>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" placeholder="Filtrar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs min-w-[150px] outline-none">
+                        <label class="bg-emerald-600 text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md cursor-pointer hover:bg-emerald-700">
+                            Importar
+                            <input type="file" class="hidden" accept=".xlsx" onchange="handleImportFile(event, 'PROCESSES')">
+                        </label>
+                        ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest">Novo NUP</button>` : ''}
+                    </div>
+                </div>
+                <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
+                    <div class="table-container">
+                        <table class="min-w-table w-full text-left text-[10px] md:text-[11px]">
+                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400">
+                                <tr><th class="px-6 py-5 w-28">Data</th><th class="px-6 py-5 w-56">NUP</th><th class="px-6 py-5">Descrição</th>${canEdit ? `<th class="px-6 py-5 w-20 text-center">Ações</th>` : ''}</tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                ${filtered.map(p => `<tr>
+                                    <td class="px-6 py-4 text-slate-400 font-bold">${p.data}</td>
+                                    <td class="px-6 py-4 font-mono text-sps-dark font-black">
+                                        <a href="https://suite.ce.gov.br/" target="_blank" onclick="handleNupClick(event, '${p.nup}')" class="hover:underline flex items-center gap-2">
+                                            ${p.nup || '---'}
+                                            <svg class="w-3 h-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/></svg>
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-800 uppercase font-bold leading-tight">${p.descricao || ''}</td>
+                                    ${canEdit ? `<td class="px-6 py-4 text-center"><button onclick="handleStartEdit(${state.processes.indexOf(p)})" class="text-blue-500 font-bold uppercase text-[9px] hover:underline">Editar</button></td>` : ''}
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderPersonnel() {
+            return `<div class="space-y-6 fade-in py-4">
+                <div class="flex items-center gap-4 mb-6">
+                    <button onclick="state.view='DASHBOARD';render();" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 text-xl">←</button>
+                    <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Relação Pessoal</h1>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    ${UNITS.map(u => `<div class="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:border-sps-primary transition-all cursor-pointer flex flex-col justify-between h-32">
+                        <h3 class="font-black text-slate-700 text-[10px] uppercase leading-tight">${u.name}</h3>
+                        <span class="text-[8px] font-black uppercase text-sps-primary tracking-widest">Acessar Setor →</span>
+                    </div>`).join('')}
+                </div>
+            </div>`;
+        }
+
+        function renderDemandDetailModal() {
+            const d = state.demands[state.viewingDemandDetailIndex];
+            const uName = UNITS.find(u => u.id === d.unidade)?.name || '---';
+            const status = DEMAND_STATUS.find(s => s.id === d.status) || DEMAND_STATUS[0];
+            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 p-4 fade-in">
+                <div class="bg-white w-full max-w-lg rounded-[28px] shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh]">
+                    <div class="bg-slate-900 p-6 md:p-8 text-white flex justify-between items-center">
+                        <p class="text-[10px] font-black uppercase tracking-widest leading-none">Detalhamento</p>
+                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg">✕</button>
+                    </div>
+                    <div class="p-6 md:p-10 space-y-6 text-left">
+                        <div class="space-y-4 border-b pb-6">
+                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Unidade</p><p class="text-xs font-black uppercase">${uName}</p></div>
+                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Status</p><div class="status-pill ${status.color}">${status.label}</div></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Data</p><p class="text-xs font-bold text-slate-800">${d.data}</p></div>
+                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Categoria</p><p class="text-xs font-bold uppercase">${d.tipo}</p></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Descrição:</p>
+                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 max-h-[250px] overflow-y-auto">
+                                <p class="text-slate-800 font-semibold uppercase text-[11px] leading-relaxed whitespace-pre-wrap">${d.descricao}</p>
+                            </div>
+                        </div>
+                        <div class="pt-4 flex gap-3">
+                            <button onclick="handleStartEditDemand(${state.viewingDemandDetailIndex});state.viewingDemandDetailIndex=null;render();" class="flex-1 py-4 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg">Editar</button>
+                            <button onclick="state.viewingDemandDetailIndex=null;render();" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-[9px] uppercase">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderDemandModal() {
+            const isEditing = state.editingDemandIndex !== null;
+            const demand = isEditing ? state.demands[state.editingDemandIndex] : null;
+            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-3 md:p-4 fade-in">
+                <div class="bg-white w-full max-w-lg rounded-[28px] shadow-2xl overflow-y-auto max-h-[95vh]">
+                    <div class="bg-blue-600 p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest">${isEditing ? 'Atualizar Atividade' : 'Novo Registro'}</h3></div>
+                    <form onsubmit="handleSaveDemand(event)" class="p-6 md:p-10 space-y-6 text-left">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="d-date" type="text" value="${demand ? demand.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200"></div>
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Unidade</label><select id="d-unit" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200 uppercase">${UNITS.map(u => `<option value="${u.id}" ${demand && demand.unidade === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select></div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Categoria</label><select id="d-type" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200 uppercase">${DEMAND_TYPES.map(t => `<option value="${t}" ${demand && demand.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Status</label><select id="d-status" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200 uppercase">${DEMAND_STATUS.map(s => `<option value="${s.id}" ${demand && demand.status === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+                        </div>
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição Detalhada</label><textarea id="d-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase font-bold outline-none border border-slate-200" rows="5">${demand ? demand.descricao : ''}</textarea></div>
+                        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t"><button type="button" onclick="state.isRegisteringDemand=false;render();" class="py-4 bg-slate-100 rounded-xl font-black text-[9px] uppercase text-slate-500 w-full">Cancelar</button><button type="submit" class="py-4 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg w-full">Gravar Registro</button></div>
+                    </form>
+                </div>
+            </div>`;
+        }
+
+        function renderProcessModal() {
+            const isEditing = state.editingIndex !== null;
+            const proc = isEditing ? state.processes[state.editingIndex] : null;
+            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
+                <div class="bg-white w-full max-w-sm rounded-[28px] shadow-2xl overflow-hidden">
+                    <div class="bg-sps-dark p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest">${isEditing ? 'Editar NUP' : 'Novo NUP'}</h3></div>
+                    <form onsubmit="handleSaveProc(event)" class="p-6 md:p-8 space-y-5 text-left">
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="p-date" type="text" value="${proc ? proc.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200"></div>
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">NUP</label><input id="p-nup" type="text" value="${proc ? proc.nup : '47001.'}" oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-mono border border-slate-200"></div>
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição</label><textarea id="p-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase border border-slate-200" rows="3">${proc ? proc.descricao : ''}</textarea></div>
+                        <div class="flex gap-3 pt-4"><button type="button" onclick="state.isRegisteringProcess=false;render();" class="flex-1 py-4 bg-slate-100 rounded-xl text-[9px] font-black uppercase text-slate-400">Cancelar</button><button type="submit" class="flex-1 py-4 bg-sps-dark text-white rounded-xl text-[9px] font-black uppercase shadow-lg">Gravar</button></div>
+                    </form>
+                </div>
+            </div>`;
         }
 
         function renderContent() {
@@ -279,256 +642,14 @@
             }
         }
 
-        function renderDashboardHub() {
-            const isAdmin = state.user.role === 'ADMIN';
-            return `<div class="h-full w-full flex flex-col items-center justify-center py-10 px-6">
-                <div class="max-w-5xl w-full space-y-12 text-center text-left">
-                    <h1 class="text-5xl md:text-6xl font-black uppercase text-gradient tracking-tighter leading-none mb-2">Painel de Controle</h1>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full fade-in stagger-1">
-                        ${isAdmin ? `<button onclick="state.view='PERSONNEL';render();" class="nav-card p-10 rounded-[32px] border border-slate-200/50 text-left flex flex-col justify-between group h-72 shadow-xl">
-                            <div class="w-16 h-16 bg-sps-light text-sps-dark rounded-2xl flex items-center justify-center mb-6 group-hover:bg-sps-dark group-hover:text-white transition-all"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
-                            <div><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Relação Pessoal</h3><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Gestão de Servidores CPSB</p></div>
-                        </button>` : ''}
-                        <button onclick="state.view='PROCESSES';render();" class="nav-card p-10 rounded-[32px] border border-slate-200/50 text-left flex flex-col justify-between group h-72 shadow-xl">
-                            <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-amber-500 group-hover:text-white transition-all"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
-                            <div><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Processos Suite</h3><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Consulta e Controle NUP</p></div>
-                        </button>
-                        <button onclick="state.view='DEMANDS';render();" class="nav-card p-10 rounded-[32px] border border-slate-200/50 text-left flex flex-col justify-between group h-72 shadow-xl">
-                            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></div>
-                            <div><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Demandas / Histórico</h3><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Pendências e Atividades</p></div>
-                        </button>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderDemands() {
-            const counts = {
-                TOTAL: state.demands.length,
-                PENDING: state.demands.filter(d => d.status === 'PENDING').length,
-                PROGRESS: state.demands.filter(d => d.status === 'PROGRESS').length,
-                DONE: state.demands.filter(d => d.status === 'DONE').length
-            };
-
-            const filtered = state.demands.filter(d => {
-                const searchMatch = d.descricao.toLowerCase().includes(state.demandSearch.toLowerCase()) || 
-                                    d.tipo.toLowerCase().includes(state.demandSearch.toLowerCase()) ||
-                                    (d.unidade && d.unidade.toLowerCase().includes(state.demandSearch.toLowerCase()));
-                const statusMatch = state.demandStatusFilter === 'ALL' || d.status === state.demandStatusFilter;
-                return searchMatch && statusMatch;
-            });
-
-            return `<div class="p-10 space-y-8 fade-in text-left">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-6">
-                        <button onclick="state.view='DASHBOARD';render();" class="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 hover:bg-slate-50 text-xl">←</button>
-                        <div>
-                            <h1 class="text-3xl font-black uppercase text-slate-800 tracking-tight">Histórico de Demandas</h1>
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Gestão Inteligente de Atividades e Unidades</p>
-                        </div>
-                    </div>
-                    <button onclick="handleStartCreateDemand()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">Nova Atividade</button>
-                </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm"><p class="text-[8px] font-black text-slate-400 mb-1">Total</p><h4 class="text-3xl font-black">${counts.TOTAL}</h4></div>
-                    <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow-sm"><p class="text-[8px] font-black text-red-400 mb-1">Pendentes</p><h4 class="text-3xl font-black text-red-600">${counts.PENDING}</h4></div>
-                    <div class="bg-amber-50 p-6 rounded-3xl border border-amber-100 shadow-sm"><p class="text-[8px] font-black text-amber-500 mb-1">Em Andamento</p><h4 class="text-3xl font-black text-amber-600">${counts.PROGRESS}</h4></div>
-                    <div class="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 shadow-sm"><p class="text-[8px] font-black text-emerald-500 mb-1">Concluídas</p><h4 class="text-3xl font-black text-emerald-600">${counts.DONE}</h4></div>
-                </div>
-
-                <div class="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-hidden">
-                    <div class="px-8 py-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div class="flex items-center gap-8 overflow-x-auto">
-                            <button onclick="state.demandStatusFilter='ALL';render();" class="pb-4 text-[10px] font-black uppercase transition-all ${state.demandStatusFilter === 'ALL' ? 'tab-active' : 'text-slate-400'}">Todas</button>
-                            <button onclick="state.demandStatusFilter='PENDING';render();" class="pb-4 text-[10px] font-black uppercase transition-all ${state.demandStatusFilter === 'PENDING' ? 'tab-active' : 'text-slate-400'}">Pendentes</button>
-                            <button onclick="state.demandStatusFilter='PROGRESS';render();" class="pb-4 text-[10px] font-black uppercase transition-all ${state.demandStatusFilter === 'PROGRESS' ? 'tab-active' : 'text-slate-400'}">Em Andamento</button>
-                            <button onclick="state.demandStatusFilter='DONE';render();" class="pb-4 text-[10px] font-black uppercase transition-all ${state.demandStatusFilter === 'DONE' ? 'tab-active' : 'text-slate-400'}">Concluídas</button>
-                        </div>
-                        <input type="text" placeholder="Pesquisar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-6 py-3 rounded-2xl border border-slate-200 text-xs w-full md:w-96">
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-[11px] table-fixed">
-                            <thead class="bg-slate-50 font-black uppercase border-b">
-                                <tr>
-                                    <th class="px-8 py-6 w-32">Data</th>
-                                    <th class="px-8 py-6 w-60">Unidade Atendida</th>
-                                    <th class="px-8 py-6">Detalhamento da Atividade</th>
-                                    <th class="px-8 py-6 w-40">Status</th>
-                                    <th class="px-8 py-6 w-24 text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                ${filtered.map((d, idx) => {
-                                    const status = DEMAND_STATUS.find(s => s.id === d.status);
-                                    const unitName = UNITS.find(u => u.id === d.unidade)?.name || 'NÃO ESPECIFICADO';
-                                    return `<tr class="hover:bg-slate-50/50 transition-colors group">
-                                        <td class="px-8 py-6 text-slate-400 font-bold align-middle">${d.data}</td>
-                                        <td class="px-8 py-6 align-middle">
-                                            <div class="flex flex-col">
-                                                <span class="text-sps-dark font-black uppercase text-[10px] truncate leading-tight" title="${unitName}">${unitName}</span>
-                                                <span class="text-[8px] text-slate-400 uppercase font-bold">${d.tipo}</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-8 py-6 cursor-pointer align-middle" onclick="handleViewDemandDetail(${state.demands.indexOf(d)})">
-                                            <div class="text-slate-800 font-semibold uppercase text-[11px] demand-description-cell" title="Clique para abrir detalhamento">
-                                                ${d.descricao}
-                                            </div>
-                                        </td>
-                                        <td class="px-8 py-6 align-middle">
-                                            <div class="status-pill ${status.color}"><div class="status-dot"></div>${status.label}</div>
-                                        </td>
-                                        <td class="px-8 py-6 text-center align-middle">
-                                            <button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black hover:bg-blue-50 px-3 py-2 rounded-lg uppercase text-[9px]">Editar</button>
-                                        </td>
-                                    </tr>`;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderDemandDetailModal() {
-            const d = state.demands[state.viewingDemandDetailIndex];
-            if (!d) return '';
-            const unitName = UNITS.find(u => u.id === d.unidade)?.name || 'NÃO ESPECIFICADO';
-            const status = DEMAND_STATUS.find(s => s.id === d.status);
-
-            return `<div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 fade-in text-left">
-                <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden animate-fadeInScale">
-                    <div class="bg-slate-900 p-8 text-white flex justify-between items-start">
-                        <div class="space-y-1">
-                            <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Detalhamento da Demanda</h3>
-                            <p class="text-lg font-black uppercase tracking-tight leading-tight">${unitName}</p>
-                        </div>
-                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white font-bold">✕</button>
-                    </div>
-                    <div class="p-10 space-y-8">
-                        <div class="grid grid-cols-2 gap-y-6 gap-x-10 pb-6 border-b">
-                            <div class="col-span-2 md:col-span-1">
-                                <p class="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Unidade Alvo</p>
-                                <p class="text-xs font-black text-slate-900 uppercase leading-snug">${unitName}</p>
-                            </div>
-                            <div class="col-span-2 md:col-span-1">
-                                <p class="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Status Atual</p>
-                                <div class="status-pill ${status.color}">${status.label}</div>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Data Ocorrência</p>
-                                <p class="text-xs font-bold text-slate-800">${d.data}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Categoria</p>
-                                <p class="text-xs font-bold text-slate-800 uppercase">${d.tipo}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-4">
-                            <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descrição e Histórico:</p>
-                            <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 max-h-[350px] overflow-y-auto">
-                                <p class="text-slate-800 font-semibold uppercase leading-relaxed text-[13px] whitespace-pre-wrap break-words">${d.descricao}</p>
-                            </div>
-                        </div>
-
-                        <div class="pt-4 flex gap-4">
-                            <button onclick="handleStartEditDemand(${state.viewingDemandDetailIndex});state.viewingDemandDetailIndex=null;render();" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all">Editar Dados</button>
-                            <button onclick="state.viewingDemandDetailIndex=null;render();" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">Fechar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderPersonnel() {
-            return `<div class="p-10 space-y-8 fade-in text-left">
-                <div class="flex items-center gap-6">
-                    <button onclick="state.view='DASHBOARD';render();" class="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 text-xl">←</button>
-                    <h1 class="text-3xl font-black uppercase text-slate-800 tracking-tight leading-none">Relação do Pessoal</h1>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    ${UNITS.map(u => `<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm group cursor-pointer h-40 flex flex-col justify-between">
-                        <h3 class="font-black text-slate-700 text-[10px] uppercase leading-tight">${u.name}</h3>
-                        <span class="text-[9px] font-black uppercase text-sps-primary tracking-widest">Acessar Setor</span>
-                    </div>`).join('')}
-                </div>
-            </div>`;
-        }
-
-        function renderProcesses() {
-            const canEdit = state.user.role === 'ADMIN';
-            const filtered = state.processes.filter(p => p.nup.toLowerCase().includes(state.processSearch.toLowerCase()) || p.descricao.toLowerCase().includes(state.processSearch.toLowerCase()));
-            return `<div class="p-10 space-y-8 fade-in text-left">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-6">
-                        <button onclick="state.view='DASHBOARD';render();" class="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 text-xl">←</button>
-                        <h1 class="text-3xl font-black uppercase text-slate-800 tracking-tight">Processos Suite</h1>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <input type="text" placeholder="Filtrar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="px-6 py-4 rounded-2xl border border-slate-200 text-xs w-full md:w-80">
-                        ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-8 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest">Novo Registro</button>` : ''}
-                    </div>
-                </div>
-                <div class="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-hidden">
-                    <table class="w-full text-left text-[11px]">
-                        <thead class="bg-slate-50 font-black uppercase border-b">
-                            <tr><th class="px-8 py-6 w-32">Data</th><th class="px-8 py-6 w-64">NUP</th><th class="px-8 py-6">Descrição</th>${canEdit ? `<th class="px-8 py-6 text-center">Ações</th>` : ''}</tr>
-                        </thead>
-                        <tbody class="divide-y">
-                            ${filtered.map((p, idx) => `<tr><td class="px-8 py-5 text-slate-400 font-bold">${p.data}</td><td class="px-8 py-5 font-mono text-sps-dark font-black">${p.nup || '---'}</td><td class="px-8 py-5 text-slate-800 uppercase font-bold leading-relaxed">${p.descricao || ''}</td>${canEdit ? `<td class="px-8 py-5 text-center"><button onclick="handleStartEdit(${idx})" class="text-blue-500 font-bold hover:underline">EDITAR</button></td>` : ''}</tr>`).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>`;
-        }
-
-        function renderDemandModal() {
-            const isEditing = state.editingDemandIndex !== null;
-            const demand = isEditing ? state.demands[state.editingDemandIndex] : null;
-            return `<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 fade-in text-left">
-                <div class="bg-white w-full max-w-xl rounded-[32px] shadow-2xl overflow-hidden animate-fadeInScale">
-                    <div class="bg-blue-600 p-8 text-white text-center"><h3 class="text-sm font-black uppercase tracking-widest">${isEditing ? 'Atualizar Atividade' : 'Novo Registro de Atividade'}</h3></div>
-                    <form onsubmit="handleSaveDemand(event)" class="p-10 space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Data</label><input id="d-date" type="text" value="${demand ? demand.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-4 rounded-2xl text-xs font-bold outline-none border border-slate-200"></div>
-                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Unidade Responsável</label><select id="d-unit" required class="w-full bg-slate-50 p-4 rounded-2xl text-xs font-bold outline-none border border-slate-200 uppercase">${UNITS.map(u => `<option value="${u.id}" ${demand && demand.unidade === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select></div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Categoria</label><select id="d-type" required class="w-full bg-slate-50 p-4 rounded-2xl text-xs font-bold outline-none border border-slate-200 uppercase">${DEMAND_TYPES.map(t => `<option value="${t}" ${demand && demand.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Status</label><select id="d-status" required class="w-full bg-slate-50 p-4 rounded-2xl text-xs font-bold outline-none border border-slate-200 uppercase">${DEMAND_STATUS.map(s => `<option value="${s.id}" ${demand && demand.status === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
-                        </div>
-                        <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Descrição Detalhada / Histórico</label><textarea id="d-desc" placeholder="..." required class="w-full bg-slate-50 p-4 rounded-2xl text-xs uppercase font-bold outline-none border border-slate-200 min-h-[120px]" rows="4">${demand ? demand.descricao : ''}</textarea></div>
-                        <div class="flex gap-4 pt-4 border-t"><button type="button" onclick="state.isRegisteringDemand=false;render();" class="flex-1 py-5 bg-slate-100 rounded-2xl font-black text-[10px] uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-3 w-3/4 py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg">Gravar Registro</button></div>
-                    </form>
-                </div>
-            </div>`;
-        }
-
-        function renderProcessModal() {
-            const isEditing = state.editingIndex !== null;
-            return `<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 fade-in text-left">
-                <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden animate-fadeInScale">
-                    <div class="bg-sps-dark p-8 text-white text-center"><h3 class="text-sm font-black uppercase tracking-widest">${isEditing ? 'Editar Registro' : 'Novo Registro Suite'}</h3></div>
-                    <form onsubmit="handleSaveProc(event)" class="p-10 space-y-6">
-                        <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Data</label><input id="p-date" type="text" placeholder="DD/MM/AAAA" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-4 rounded-2xl text-xs font-bold"></div>
-                        <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">NUP</label><input id="p-nup" type="text" placeholder="47001." oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-4 rounded-2xl text-xs font-mono"></div>
-                        <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Descrição</label><textarea id="p-desc" placeholder="..." required class="w-full bg-slate-50 p-4 rounded-2xl text-xs uppercase" rows="3"></textarea></div>
-                        <div class="flex gap-4 pt-4"><button type="button" onclick="state.isRegisteringProcess=false;render();" class="flex-1 py-4 bg-slate-100 rounded-2xl text-[10px] font-black uppercase">Cancelar</button><button type="submit" class="flex-1 py-4 bg-sps-dark text-white rounded-2xl text-[10px] font-black uppercase">Gravar</button></div>
-                    </form>
-                </div>
-            </div>`;
-        }
-
-        window.handleStartCreate = () => { state.editingIndex = null; state.isRegisteringProcess = true; render(); setTimeout(() => { document.getElementById('p-date').value = getTodayFormatted(); document.getElementById('p-nup').value = "47001."; }, 0); };
-        window.handleStartEdit = (idx) => { state.editingIndex = idx; state.isRegisteringProcess = true; render(); setTimeout(() => { const p = state.processes[idx]; document.getElementById('p-date').value = p.data; document.getElementById('p-nup').value = p.nup; document.getElementById('p-desc').value = p.descricao; }, 0); };
+        window.handleStartCreate = () => { state.editingIndex = null; state.isRegisteringProcess = true; render(); };
+        window.handleStartEdit = (idx) => { state.editingIndex = idx; state.isRegisteringProcess = true; render(); };
         window.handleSaveProc = (e) => { e.preventDefault(); const d = { data: document.getElementById('p-date').value, nup: document.getElementById('p-nup').value, descricao: document.getElementById('p-desc').value }; if (state.editingIndex !== null) state.processes[state.editingIndex] = d; else state.processes.unshift(d); state.isRegisteringProcess = false; render(); };
         window.handleStartCreateDemand = () => { state.editingDemandIndex = null; state.isRegisteringDemand = true; render(); };
         window.handleStartEditDemand = (idx) => { state.editingDemandIndex = idx; state.isRegisteringDemand = true; render(); };
         window.handleViewDemandDetail = (idx) => { state.viewingDemandDetailIndex = idx; render(); };
         window.handleSaveDemand = (e) => { e.preventDefault(); const d = { data: document.getElementById('d-date').value, unidade: document.getElementById('d-unit').value, tipo: document.getElementById('d-type').value, descricao: document.getElementById('d-desc').value, status: document.getElementById('d-status').value }; if (state.editingDemandIndex !== null) state.demands[state.editingDemandIndex] = d; else state.demands.unshift(d); state.isRegisteringDemand = false; render(); };
-        window.handleLogin = (e) => { e.preventDefault(); const u = document.getElementById('l-user').value.trim(); const found = AUTHORIZED_USERS.find(x => x.username.toLowerCase() === u.toLowerCase()); if (found) { state.user = found; state.view = 'DASHBOARD'; state.loginError = null; } else { state.loginError = 'Credenciais Inválidas'; } render(); };
+        window.handleLogin = (e) => { e.preventDefault(); const u = document.getElementById('l-user').value.trim(); const found = AUTHORIZED_USERS.find(x => x.username.toLowerCase() === u.toLowerCase()); if (found) { state.user = found; state.view = 'DASHBOARD'; state.loginError = null; } else { state.loginError = 'Erro de acesso'; } render(); };
 
         render();
     </script>
