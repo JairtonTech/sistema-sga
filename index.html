@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE GESTÃO ADMINISTRATIVA SGA</title>
-    <!-- VERSÃO 9.5 - RESPONSIVIDADE TOTAL (MOBILE-FIRST) -->
+    <!-- VERSÃO 9.7 - ACESSIBILIDADE & FIX FOCO PESQUISA -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +37,17 @@
             margin: 0;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
+            transition: font-size 0.2s ease;
         }
+        
+        /* Escalas de Acessibilidade */
+        .scale-small { font-size: 0.9rem; }
+        .scale-normal { font-size: 1rem; }
+        .scale-large { font-size: 1.15rem; }
+
+        .scale-small #app-container { transform: scale(0.95); transform-origin: top center; }
+        .scale-large #app-container { transform: scale(1.05); transform-origin: top center; }
+
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { 
             from { opacity: 0; transform: translateY(10px); } 
@@ -55,7 +65,7 @@
         .status-pill {
             padding: 4px 10px;
             border-radius: 9999px;
-            font-size: 9px;
+            font-size: 0.75em;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -78,7 +88,7 @@
         }
 
         .glass-header {
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
         }
@@ -87,7 +97,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 200px; /* Base mobile */
+            max-width: 150px;
             display: block;
         }
         @media (min-width: 768px) {
@@ -112,20 +122,42 @@
             display: none;
         }
 
-        /* Fix para tabelas no mobile */
         .table-container {
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             border-radius: 16px;
+            background: white;
         }
-        .min-w-table { min-width: 850px; }
+        .min-w-table { min-width: 800px; }
 
-        /* Estilo de card interativo */
         .nav-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .nav-card:active { transform: scale(0.96); }
+        
+        input, select, textarea {
+            font-size: 1em !important; 
+        }
+
+        .accessibility-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: 900;
+            font-size: 10px;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+        .accessibility-btn.active {
+            background: #064e3b;
+            color: white;
+            border-color: #064e3b;
+            box-shadow: 0 4px 10px rgba(6, 78, 59, 0.2);
+        }
     </style>
 <script type="importmap">
 {
@@ -136,7 +168,7 @@
 }
 </script>
 </head>
-<body class="dashboard-bg min-h-screen flex flex-col">
+<body class="dashboard-bg min-h-screen flex flex-col scale-normal">
     <div id="app" class="flex-1 flex flex-col min-h-screen"></div>
     <div id="toast">Copiado com Sucesso!</div>
 
@@ -155,7 +187,8 @@
             viewingDemandDetailIndex: null,
             editingIndex: null,
             editingDemandIndex: null,
-            loginError: null
+            loginError: null,
+            layoutScale: 'normal' // Opções: 'small', 'normal', 'large'
         };
 
         const AUTHORIZED_USERS = [
@@ -330,7 +363,18 @@
             return r;
         };
 
+        window.setLayoutScale = (scale) => {
+            state.layoutScale = scale;
+            document.body.classList.remove('scale-small', 'scale-normal', 'scale-large');
+            document.body.classList.add(`scale-${scale}`);
+            render();
+        };
+
         function render() {
+            const activeElementId = document.activeElement ? document.activeElement.id : null;
+            const selectionStart = document.activeElement ? document.activeElement.selectionStart : null;
+            const selectionEnd = document.activeElement ? document.activeElement.selectionEnd : null;
+
             const app = document.getElementById('app');
             if (state.view === 'AUTH') { app.innerHTML = renderLogin(); return; }
 
@@ -339,7 +383,9 @@
                     ${renderHeader()}
                     <main class="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10 relative z-10">
                         <div class="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none"></div>
-                        <div class="max-w-7xl mx-auto w-full">${renderContent()}</div>
+                        <div id="app-container" class="max-w-7xl mx-auto w-full transition-transform duration-300">
+                            ${renderContent()}
+                        </div>
                     </main>
                     ${renderFooter()}
                 </div>
@@ -347,6 +393,16 @@
                 ${state.isRegisteringDemand ? renderDemandModal() : ''}
                 ${state.viewingDemandDetailIndex !== null ? renderDemandDetailModal() : ''}
             `;
+
+            if (activeElementId) {
+                const el = document.getElementById(activeElementId);
+                if (el) {
+                    el.focus();
+                    if (selectionStart !== null && (el.type === 'text' || el.type === 'textarea')) {
+                        el.setSelectionRange(selectionStart, selectionEnd);
+                    }
+                }
+            }
         }
 
         function renderHeader() {
@@ -355,12 +411,22 @@
                     <div class="w-8 h-8 md:w-10 md:h-10 bg-sps-dark rounded-lg md:rounded-xl flex items-center justify-center text-white font-black text-[10px] md:text-xs shadow-md">SGA</div>
                     <h1 class="text-[10px] md:text-sm font-black text-slate-800 uppercase tracking-tighter">Gestão Administrativa</h1>
                 </div>
-                <div class="flex items-center gap-4 md:gap-8">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-[10px] font-black text-slate-900 uppercase leading-none">Olá, <span class="text-sps-primary">${state.user.name.split(' ')[0]}</span></p>
-                        <span class="text-[8px] font-black uppercase text-slate-400">${state.user.role}</span>
+                
+                <div class="flex items-center gap-4">
+                    <!-- Seletor de Escala Visual -->
+                    <div class="hidden md:flex items-center bg-white/50 p-1 rounded-xl border border-slate-200 gap-1">
+                        <button onclick="setLayoutScale('small')" class="accessibility-btn ${state.layoutScale === 'small' ? 'active' : ''}" title="Escala Pequena">A-</button>
+                        <button onclick="setLayoutScale('normal')" class="accessibility-btn ${state.layoutScale === 'normal' ? 'active' : ''}" title="Escala Normal">A</button>
+                        <button onclick="setLayoutScale('large')" class="accessibility-btn ${state.layoutScale === 'large' ? 'active' : ''}" title="Escala Grande">A+</button>
                     </div>
-                    <button onclick="state.view='AUTH';state.user=null;render();" class="text-[8px] md:text-[9px] font-black text-white bg-red-500 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl uppercase tracking-widest shadow-sm hover:bg-red-600 transition-colors">Sair</button>
+
+                    <div class="flex items-center gap-3 md:gap-8">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-[10px] font-black text-slate-900 uppercase leading-none">Olá, <span class="text-sps-primary">${state.user.name.split(' ')[0]}</span></p>
+                            <span class="text-[8px] font-black uppercase text-slate-400">${state.user.role}</span>
+                        </div>
+                        <button onclick="state.view='AUTH';state.user=null;render();" class="text-[8px] md:text-[9px] font-black text-white bg-red-500 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl uppercase tracking-widest shadow-sm hover:bg-red-600 transition-colors">Sair</button>
+                    </div>
                 </div>
             </header>`;
         }
@@ -368,7 +434,7 @@
         function renderFooter() {
             return `<footer class="bg-white/90 border-t border-slate-100 py-4 px-4 md:px-10 flex flex-col md:flex-row items-center justify-between gap-3 text-center">
                 <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Desenvolvido por <span class="text-sps-dark">Jairton Filho</span> © 2025</p>
-                <span class="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest">SGA v9.5 Active</span>
+                <span class="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest">SGA v9.7 Active</span>
             </footer>`;
         }
 
@@ -376,18 +442,18 @@
             return `<div class="min-h-screen flex items-center justify-center p-4 bg-sps-light">
                 <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border">
                     <div class="bg-sps-dark p-8 md:p-12 text-center text-white">
-                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/20 font-black">SGA</div>
-                        <h1 class="text-sm md:text-xl font-bold uppercase tracking-widest">Sistema de Gestão</h1>
+                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/20 font-black text-white">SGA</div>
+                        <h1 class="text-sm md:text-xl font-bold uppercase tracking-widest text-white">Sistema de Gestão</h1>
                     </div>
                     <form onsubmit="handleLogin(event)" class="p-6 md:p-10 space-y-6">
                         ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[9px] font-bold uppercase">${state.loginError}</p>` : ''}
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase">Usuário</label>
-                            <input id="l-user" type="text" required class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" placeholder="nome.sobrenome">
+                            <input id="l-user" type="text" required class="w-full px-4 py-3 rounded-xl border border-slate-200" placeholder="nome.sobrenome">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase">Senha</label>
-                            <input id="l-pass" type="password" required class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" placeholder="••••••••">
+                            <input id="l-pass" type="password" required class="w-full px-4 py-3 rounded-xl border border-slate-200" placeholder="••••••••">
                         </div>
                         <button type="submit" class="w-full bg-sps-dark text-white py-4 rounded-xl font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-transform">Autenticar</button>
                     </form>
@@ -400,15 +466,15 @@
             return `<div class="space-y-8 md:space-y-12 py-4 md:py-10">
                 <h1 class="text-3xl md:text-5xl font-black uppercase text-gradient tracking-tighter text-center">Painel Central</h1>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                    ${isAdmin ? `<button onclick="state.view='PERSONNEL';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[180px] md:h-72 shadow-lg">
+                    ${isAdmin ? `<button onclick="state.view='PERSONNEL';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[160px] md:h-72 shadow-lg">
                         <div class="w-12 h-12 bg-sps-light text-sps-dark rounded-xl flex items-center justify-center mb-6 group-hover:bg-sps-dark group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-width="2"/></svg></div>
                         <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Relação Pessoal</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Gestão de Servidores</p></div>
                     </button>` : ''}
-                    <button onclick="state.view='PROCESSES';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[180px] md:h-72 shadow-lg">
+                    <button onclick="state.view='PROCESSES';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[160px] md:h-72 shadow-lg">
                         <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500 group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2"/></svg></div>
                         <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Processos Suite</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Consulta NUP</p></div>
                     </button>
-                    <button onclick="state.view='DEMANDS';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[180px] md:h-72 shadow-lg sm:col-span-2 lg:col-span-1">
+                    <button onclick="state.view='DEMANDS';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[160px] md:h-72 shadow-lg sm:col-span-2 lg:col-span-1">
                         <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg></div>
                         <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Demandas</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Histórico de Unidades</p></div>
                     </button>
@@ -451,8 +517,8 @@
                 </div>
 
                 <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
-                    <div class="px-6 py-4 md:py-6 border-b flex flex-col md:flex-row justify-between gap-4">
-                        <div class="flex items-center gap-4 overflow-x-auto pb-2 md:pb-0 scroll-hide">
+                    <div class="px-4 py-4 md:py-6 border-b flex flex-col md:flex-row justify-between gap-4">
+                        <div class="flex items-center gap-4 overflow-x-auto pb-2 md:pb-0">
                             <button onclick="state.demandStatusFilter='ALL';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'ALL' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Todas</button>
                             <button onclick="state.demandStatusFilter='PENDING';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'PENDING' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Pendente</button>
                             <button onclick="state.demandStatusFilter='PROGRESS';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'PROGRESS' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Andamento</button>
@@ -463,12 +529,12 @@
                                 <option value="ALL">Todas Unidades</option>
                                 ${UNITS.map(u => `<option value="${u.id}" ${state.demandUnitFilter === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
                             </select>
-                            <input type="text" placeholder="Pesquisar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-4 py-2 rounded-xl border border-slate-200 text-xs w-full sm:w-48 outline-none">
+                            <input id="demand-search-field" type="text" placeholder="Pesquisar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-4 py-2 rounded-xl border border-slate-200 text-xs w-full sm:w-48 outline-none focus:ring-1 focus:ring-sps-primary">
                         </div>
                     </div>
 
                     <div class="table-container">
-                        <table class="min-w-table w-full text-left text-[10px] md:text-[11px]">
+                        <table class="min-w-table w-full text-left text-[0.85em] md:text-[0.9em]">
                             <thead class="bg-slate-50 font-black uppercase border-b text-slate-400">
                                 <tr>
                                     <th class="px-6 py-4 w-28">Data</th>
@@ -489,7 +555,7 @@
                                             <span class="demand-description-cell text-slate-800 font-medium">${d.descricao}</span>
                                         </td>
                                         <td class="px-6 py-4"><div class="status-pill ${status.color}"><div class="status-dot"></div>${status.label}</div></td>
-                                        <td class="px-6 py-4 text-center"><button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black uppercase text-[9px] hover:underline">Editar</button></td>
+                                        <td class="px-6 py-4 text-center"><button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black uppercase text-[0.8em] hover:underline">Editar</button></td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -512,17 +578,17 @@
                         <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Processos Suite</h1>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <input type="text" placeholder="Filtrar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs min-w-[150px] outline-none">
+                        <input id="process-search-field" type="text" placeholder="Filtrar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs min-w-[150px] outline-none focus:ring-1 focus:ring-sps-primary">
                         <label class="bg-emerald-600 text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md cursor-pointer hover:bg-emerald-700">
                             Importar
                             <input type="file" class="hidden" accept=".xlsx" onchange="handleImportFile(event, 'PROCESSES')">
                         </label>
-                        ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest">Novo NUP</button>` : ''}
+                        ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md">Novo NUP</button>` : ''}
                     </div>
                 </div>
                 <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
                     <div class="table-container">
-                        <table class="min-w-table w-full text-left text-[10px] md:text-[11px]">
+                        <table class="min-w-table w-full text-left text-[0.85em] md:text-[0.9em]">
                             <thead class="bg-slate-50 font-black uppercase border-b text-slate-400">
                                 <tr><th class="px-6 py-5 w-28">Data</th><th class="px-6 py-5 w-56">NUP</th><th class="px-6 py-5">Descrição</th>${canEdit ? `<th class="px-6 py-5 w-20 text-center">Ações</th>` : ''}</tr>
                             </thead>
@@ -536,7 +602,7 @@
                                         </a>
                                     </td>
                                     <td class="px-6 py-4 text-slate-800 uppercase font-bold leading-tight">${p.descricao || ''}</td>
-                                    ${canEdit ? `<td class="px-6 py-4 text-center"><button onclick="handleStartEdit(${state.processes.indexOf(p)})" class="text-blue-500 font-bold uppercase text-[9px] hover:underline">Editar</button></td>` : ''}
+                                    ${canEdit ? `<td class="px-6 py-4 text-center"><button onclick="handleStartEdit(${state.processes.indexOf(p)})" class="text-blue-500 font-bold uppercase text-[0.8em] hover:underline">Editar</button></td>` : ''}
                                 </tr>`).join('')}
                             </tbody>
                         </table>
@@ -553,8 +619,8 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     ${UNITS.map(u => `<div class="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:border-sps-primary transition-all cursor-pointer flex flex-col justify-between h-32">
-                        <h3 class="font-black text-slate-700 text-[10px] uppercase leading-tight">${u.name}</h3>
-                        <span class="text-[8px] font-black uppercase text-sps-primary tracking-widest">Acessar Setor →</span>
+                        <h3 class="font-black text-slate-700 text-[0.85em] uppercase leading-tight">${u.name}</h3>
+                        <span class="text-[0.65em] font-black uppercase text-sps-primary tracking-widest">Acessar Setor →</span>
                     </div>`).join('')}
                 </div>
             </div>`;
@@ -568,15 +634,15 @@
                 <div class="bg-white w-full max-w-lg rounded-[28px] shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh]">
                     <div class="bg-slate-900 p-6 md:p-8 text-white flex justify-between items-center">
                         <p class="text-[10px] font-black uppercase tracking-widest leading-none">Detalhamento</p>
-                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg">✕</button>
+                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg text-white">✕</button>
                     </div>
                     <div class="p-6 md:p-10 space-y-6 text-left">
                         <div class="space-y-4 border-b pb-6">
-                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Unidade</p><p class="text-xs font-black uppercase">${uName}</p></div>
+                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Unidade</p><p class="text-xs font-black uppercase text-slate-900">${uName}</p></div>
                             <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Status</p><div class="status-pill ${status.color}">${status.label}</div></div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Data</p><p class="text-xs font-bold text-slate-800">${d.data}</p></div>
-                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Categoria</p><p class="text-xs font-bold uppercase">${d.tipo}</p></div>
+                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Categoria</p><p class="text-xs font-bold uppercase text-slate-800">${d.tipo}</p></div>
                             </div>
                         </div>
                         <div class="space-y-3">
@@ -599,7 +665,7 @@
             const demand = isEditing ? state.demands[state.editingDemandIndex] : null;
             return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-3 md:p-4 fade-in">
                 <div class="bg-white w-full max-w-lg rounded-[28px] shadow-2xl overflow-y-auto max-h-[95vh]">
-                    <div class="bg-blue-600 p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest">${isEditing ? 'Atualizar Atividade' : 'Novo Registro'}</h3></div>
+                    <div class="bg-blue-600 p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Atualizar Atividade' : 'Novo Registro'}</h3></div>
                     <form onsubmit="handleSaveDemand(event)" class="p-6 md:p-10 space-y-6 text-left">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="d-date" type="text" value="${demand ? demand.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200"></div>
@@ -621,7 +687,7 @@
             const proc = isEditing ? state.processes[state.editingIndex] : null;
             return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
                 <div class="bg-white w-full max-w-sm rounded-[28px] shadow-2xl overflow-hidden">
-                    <div class="bg-sps-dark p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest">${isEditing ? 'Editar NUP' : 'Novo NUP'}</h3></div>
+                    <div class="bg-sps-dark p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Editar NUP' : 'Novo NUP'}</h3></div>
                     <form onsubmit="handleSaveProc(event)" class="p-6 md:p-8 space-y-5 text-left">
                         <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="p-date" type="text" value="${proc ? proc.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200"></div>
                         <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">NUP</label><input id="p-nup" type="text" value="${proc ? proc.nup : '47001.'}" oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-mono border border-slate-200"></div>
