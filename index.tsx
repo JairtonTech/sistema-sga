@@ -1,12 +1,9 @@
 
 /**
- * PONTO DE RESTAURAÇÃO - VERSÃO 1.2 (ESTÁVEL)
+ * PONTO DE RESTAURAÇÃO - VERSÃO 1.4 (SISTEMA UNIFICADO - BRANDING LIMPO)
  * 
  * O sistema foi consolidado no arquivo index.html para garantir:
- * 1. Execução instantânea em qualquer ambiente local sem dependências de compilação.
- * 2. Estabilidade total dos módulos de Autenticação, RH (Pessoal) e Processos Suite.
- * 3. Títulos e rodapés atualizados conforme solicitação do usuário.
- * 
- * Se desejar migrar para React puro no futuro, as definições em types.ts e os componentes .tsx
- * servem como base estrutural.
+ * 1. Execução instantânea sem dependências.
+ * 2. Branding focado na nomenclatura por extenso: SISTEMA UNIFICADO DE GESTÃO ADMINISTRATIVA.
+ * 3. Logotipo visual institucional preservado.
  */

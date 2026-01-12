@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA DE GESTÃO ADMINISTRATIVA SGA</title>
-    <!-- VERSÃO 9.7 - ACESSIBILIDADE & FIX FOCO PESQUISA -->
+    <title>SISTEMA UNIFICADO DE GESTÃO ADMINISTRATIVA</title>
+    <!-- VERSÃO 10.3 - MÓDULO DE CUSTOS & UTILIDADES -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,13 +40,9 @@
             transition: font-size 0.2s ease;
         }
         
-        /* Escalas de Acessibilidade */
         .scale-small { font-size: 0.9rem; }
         .scale-normal { font-size: 1rem; }
         .scale-large { font-size: 1.15rem; }
-
-        .scale-small #app-container { transform: scale(0.95); transform-origin: top center; }
-        .scale-large #app-container { transform: scale(1.05); transform-origin: top center; }
 
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { 
@@ -81,45 +77,10 @@
             background-color: currentColor;
         }
 
-        .text-gradient {
-            background: linear-gradient(135deg, #064e3b 0%, #3b823e 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
         .glass-header {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-        }
-
-        .demand-description-cell {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 150px;
-            display: block;
-        }
-        @media (min-width: 768px) {
-            .demand-description-cell { max-width: 450px; }
-        }
-
-        #toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #064e3b;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            z-index: 2000;
-            display: none;
         }
 
         .table-container {
@@ -132,14 +93,15 @@
         .min-w-table { min-width: 800px; }
 
         .nav-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05), 0 5px 15px -5px rgba(0,0,0,0.02);
+            border: 8px solid white;
         }
-        .nav-card:active { transform: scale(0.96); }
+        .nav-card:hover { 
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.12);
+        }
         
-        input, select, textarea {
-            font-size: 1em !important; 
-        }
-
         .accessibility-btn {
             width: 32px;
             height: 32px;
@@ -156,7 +118,29 @@
             background: #064e3b;
             color: white;
             border-color: #064e3b;
-            box-shadow: 0 4px 10px rgba(6, 78, 59, 0.2);
+        }
+
+        .btn-back {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            font-weight: 800;
+            font-size: 10px;
+            color: #064e3b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .welcome-hero {
+            background: linear-gradient(135deg, #064e3b 0%, #1a4d2e 100%);
+            position: relative;
+            overflow: hidden;
         }
     </style>
 <script type="importmap">
@@ -170,7 +154,7 @@
 </head>
 <body class="dashboard-bg min-h-screen flex flex-col scale-normal">
     <div id="app" class="flex-1 flex flex-col min-h-screen"></div>
-    <div id="toast">Copiado com Sucesso!</div>
+    <div id="toast">Operação realizada!</div>
 
     <script>
         const state = {
@@ -178,17 +162,21 @@
             user: null, 
             processes: [],
             demands: [], 
+            utilityRecords: [], // Histórico de faturas ENEL/CAGECE
             processSearch: '',
             demandSearch: '',
-            demandStatusFilter: 'ALL',
-            demandUnitFilter: 'ALL',
+            utilitySearch: '',
+            utilityTypeFilter: 'ALL',
+            utilityUnitFilter: 'ALL',
             isRegisteringProcess: false,
             isRegisteringDemand: false,
+            isRegisteringUtility: false,
             viewingDemandDetailIndex: null,
             editingIndex: null,
             editingDemandIndex: null,
+            editingUtilityIndex: null,
             loginError: null,
-            layoutScale: 'normal' // Opções: 'small', 'normal', 'large'
+            layoutScale: 'normal' 
         };
 
         const AUTHORIZED_USERS = [
@@ -229,139 +217,17 @@
             return `${dd}/${mm}/${yyyy}`;
         }
 
-        function excelDateToJSDate(serial) {
-            if (typeof serial === 'string' && serial.includes('/')) return serial;
-            const utc_days = Math.floor(serial - 25569);
-            const utc_value = utc_days * 86400;
-            const date_info = new Date(utc_value * 1000);
-            const fractional_day = serial - Math.floor(serial) + 0.0000001;
-            let total_seconds = Math.floor(86400 * fractional_day);
-            const seconds = total_seconds % 60;
-            total_seconds -= seconds;
-            const hours = Math.floor(total_seconds / (60 * 60));
-            const minutes = Math.floor(total_seconds / 60) % 60;
-            const d = new Date(date_info.getFullYear(), date_info.getMonth(), date_info.getDate(), hours, minutes, seconds);
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            return `${dd}/${mm}/${yyyy}`;
-        }
-
-        function getSmartValue(item, possibleKeys, isDate = false) {
-            const normalize = (s) => s.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const normalizedTargets = possibleKeys.map(normalize);
-            for (const key in item) {
-                if (normalizedTargets.includes(normalize(key))) {
-                    let val = item[key];
-                    if (val === null || val === undefined) return isDate ? getTodayFormatted() : "";
-                    if (isDate) {
-                        if (val instanceof Date) {
-                            const dd = String(val.getDate()).padStart(2, '0');
-                            const mm = String(val.getMonth() + 1).padStart(2, '0');
-                            const yyyy = val.getFullYear();
-                            return `${dd}/${mm}/${yyyy}`;
-                        }
-                        if (typeof val === 'number') return excelDateToJSDate(val);
-                        if (typeof val === 'string') {
-                            val = val.trim();
-                            if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
-                            const parsed = new Date(val);
-                            if (!isNaN(parsed.getTime())) {
-                                const dd = String(parsed.getDate()).padStart(2, '0');
-                                const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-                                const yyyy = parsed.getFullYear();
-                                return `${dd}/${mm}/${yyyy}`;
-                            }
-                        }
-                        return getTodayFormatted();
-                    }
-                    return val.toString().trim();
-                }
-            }
-            return isDate ? getTodayFormatted() : "";
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
         }
 
         function dateToTimestamp(dateStr) {
             if (!dateStr || typeof dateStr !== 'string') return 0;
             const parts = dateStr.split('/');
-            if (parts.length !== 3) return 0;
-            return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+            if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+            if (parts.length === 2) return new Date(parts[1], parts[0] - 1, 1).getTime();
+            return 0;
         }
-
-        window.handleNupClick = (event, nup) => {
-            if (nup && nup !== '---') {
-                navigator.clipboard.writeText(nup).then(() => {
-                    showToast();
-                });
-            }
-        };
-
-        function showToast() {
-            const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
-        }
-
-        window.handleImportFile = (event, targetType) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const workbook = XLSX.read(e.target.result, { type: 'binary' });
-                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                if (targetType === 'PROCESSES') importProcesses(jsonData);
-                else if (targetType === 'DEMANDS') importDemands(jsonData);
-                event.target.value = '';
-            };
-            reader.readAsBinaryString(file);
-        };
-
-        function importProcesses(data) {
-            const mapped = data.map(item => ({
-                data: getSmartValue(item, ['Data', 'Data Registro', 'Dia'], true),
-                nup: getSmartValue(item, ['NUP', 'Processo', 'Numero']),
-                descricao: getSmartValue(item, ['Descrição', 'Assunto', 'Detalhe'])
-            })).filter(p => p.descricao || p.nup);
-            state.processes = [...mapped, ...state.processes];
-            alert('Importado!'); render();
-        }
-
-        function importDemands(data) {
-            const mapped = data.map(item => {
-                const uInput = getSmartValue(item, ['Unidade', 'Local']);
-                const uFound = UNITS.find(u => u.name.toLowerCase().includes(uInput.toLowerCase()));
-                return {
-                    data: getSmartValue(item, ['Data', 'Dia'], true),
-                    unidade: uFound ? uFound.id : '1',
-                    tipo: getSmartValue(item, ['Tipo', 'Categoria']) || 'Outros',
-                    descricao: getSmartValue(item, ['Descrição', 'Atividade']),
-                    status: (getSmartValue(item, ['Status']) || 'PENDING').toUpperCase()
-                };
-            }).filter(d => d.descricao);
-            state.demands = [...mapped, ...state.demands];
-            alert('Importado!'); render();
-        }
-
-        window.maskNUP = (v) => {
-            v = v.replace(/\D/g, "");
-            if (v.length > 17) v = v.substring(0, 17);
-            let r = "";
-            if (v.length > 0) r += v.substring(0, 5);
-            if (v.length > 5) r += "." + v.substring(5, 11);
-            if (v.length > 11) r += "/" + v.substring(11, 15);
-            if (v.length > 15) r += "-" + v.substring(15, 17);
-            return r;
-        };
-
-        window.maskDate = (v) => {
-            v = v.replace(/\D/g, "");
-            if (v.length > 8) v = v.substring(0, 8);
-            let r = "";
-            if (v.length > 0) r += v.substring(0, 2);
-            if (v.length > 2) r += "/" + v.substring(2, 4);
-            if (v.length > 4) r += "/" + v.substring(4, 8);
-            return r;
-        };
 
         window.setLayoutScale = (scale) => {
             state.layoutScale = scale;
@@ -371,10 +237,6 @@
         };
 
         function render() {
-            const activeElementId = document.activeElement ? document.activeElement.id : null;
-            const selectionStart = document.activeElement ? document.activeElement.selectionStart : null;
-            const selectionEnd = document.activeElement ? document.activeElement.selectionEnd : null;
-
             const app = document.getElementById('app');
             if (state.view === 'AUTH') { app.innerHTML = renderLogin(); return; }
 
@@ -391,33 +253,25 @@
                 </div>
                 ${state.isRegisteringProcess ? renderProcessModal() : ''}
                 ${state.isRegisteringDemand ? renderDemandModal() : ''}
+                ${state.isRegisteringUtility ? renderUtilityModal() : ''}
                 ${state.viewingDemandDetailIndex !== null ? renderDemandDetailModal() : ''}
             `;
-
-            if (activeElementId) {
-                const el = document.getElementById(activeElementId);
-                if (el) {
-                    el.focus();
-                    if (selectionStart !== null && (el.type === 'text' || el.type === 'textarea')) {
-                        el.setSelectionRange(selectionStart, selectionEnd);
-                    }
-                }
-            }
         }
 
         function renderHeader() {
             return `<header class="glass-header h-16 md:h-20 flex items-center justify-between px-4 md:px-10 sticky top-0 z-[100]">
                 <div class="flex items-center gap-3 md:gap-5 cursor-pointer" onclick="state.view='DASHBOARD';render();">
-                    <div class="w-8 h-8 md:w-10 md:h-10 bg-sps-dark rounded-lg md:rounded-xl flex items-center justify-center text-white font-black text-[10px] md:text-xs shadow-md">SGA</div>
-                    <h1 class="text-[10px] md:text-sm font-black text-slate-800 uppercase tracking-tighter">Gestão Administrativa</h1>
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-sps-dark rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-md">
+                        <svg class="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
+                    </div>
+                    <h1 class="text-[9px] md:text-xs font-black text-slate-800 uppercase tracking-tighter">Gestão Administrativa</h1>
                 </div>
                 
                 <div class="flex items-center gap-4">
-                    <!-- Seletor de Escala Visual -->
                     <div class="hidden md:flex items-center bg-white/50 p-1 rounded-xl border border-slate-200 gap-1">
-                        <button onclick="setLayoutScale('small')" class="accessibility-btn ${state.layoutScale === 'small' ? 'active' : ''}" title="Escala Pequena">A-</button>
-                        <button onclick="setLayoutScale('normal')" class="accessibility-btn ${state.layoutScale === 'normal' ? 'active' : ''}" title="Escala Normal">A</button>
-                        <button onclick="setLayoutScale('large')" class="accessibility-btn ${state.layoutScale === 'large' ? 'active' : ''}" title="Escala Grande">A+</button>
+                        <button onclick="setLayoutScale('small')" class="accessibility-btn ${state.layoutScale === 'small' ? 'active' : ''}">A-</button>
+                        <button onclick="setLayoutScale('normal')" class="accessibility-btn ${state.layoutScale === 'normal' ? 'active' : ''}">A</button>
+                        <button onclick="setLayoutScale('large')" class="accessibility-btn ${state.layoutScale === 'large' ? 'active' : ''}">A+</button>
                     </div>
 
                     <div class="flex items-center gap-3 md:gap-8">
@@ -434,28 +288,32 @@
         function renderFooter() {
             return `<footer class="bg-white/90 border-t border-slate-100 py-4 px-4 md:px-10 flex flex-col md:flex-row items-center justify-between gap-3 text-center">
                 <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Desenvolvido por <span class="text-sps-dark">Jairton Filho</span> © 2025</p>
-                <span class="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest">SGA v9.7 Active</span>
+                <span class="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest">SISTEMA ATIVO v10.3</span>
             </footer>`;
         }
 
         function renderLogin() {
             return `<div class="min-h-screen flex items-center justify-center p-4 bg-sps-light">
-                <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border">
-                    <div class="bg-sps-dark p-8 md:p-12 text-center text-white">
-                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/20 font-black text-white">SGA</div>
-                        <h1 class="text-sm md:text-xl font-bold uppercase tracking-widest text-white">Sistema de Gestão</h1>
+                <div class="max-w-md w-full bg-white rounded-[32px] shadow-2xl overflow-hidden border">
+                    <div class="bg-sps-dark p-10 md:p-14 text-center text-white">
+                        <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/20 text-white">
+                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
+                        </div>
+                        <h1 class="text-[11px] md:text-sm font-black uppercase tracking-[0.2em] text-white leading-relaxed">
+                            Sistema Unificado de Gestão Administrativa
+                        </h1>
                     </div>
-                    <form onsubmit="handleLogin(event)" class="p-6 md:p-10 space-y-6">
+                    <form onsubmit="handleLogin(event)" class="p-8 md:p-12 space-y-6">
                         ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[9px] font-bold uppercase">${state.loginError}</p>` : ''}
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase">Usuário</label>
-                            <input id="l-user" type="text" required class="w-full px-4 py-3 rounded-xl border border-slate-200" placeholder="nome.sobrenome">
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário</label>
+                            <input id="l-user" type="text" required class="w-full px-4 py-4 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-sps-primary/20 transition-all font-medium text-slate-700" placeholder="nome.sobrenome">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase">Senha</label>
-                            <input id="l-pass" type="password" required class="w-full px-4 py-3 rounded-xl border border-slate-200" placeholder="••••••••">
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Senha</label>
+                            <input id="l-pass" type="password" required class="w-full px-4 py-4 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-sps-primary/20 transition-all font-medium text-slate-700" placeholder="••••••••">
                         </div>
-                        <button type="submit" class="w-full bg-sps-dark text-white py-4 rounded-xl font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-transform">Autenticar</button>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-xl font-bold uppercase text-[10px] tracking-[0.2em] active:scale-95 transition-transform shadow-lg">Autenticar</button>
                     </form>
                 </div>
             </div>`;
@@ -463,24 +321,226 @@
 
         function renderDashboardHub() {
             const isAdmin = state.user.role === 'ADMIN';
-            return `<div class="space-y-8 md:space-y-12 py-4 md:py-10">
-                <h1 class="text-3xl md:text-5xl font-black uppercase text-gradient tracking-tighter text-center">Painel Central</h1>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                    ${isAdmin ? `<button onclick="state.view='PERSONNEL';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[160px] md:h-72 shadow-lg">
-                        <div class="w-12 h-12 bg-sps-light text-sps-dark rounded-xl flex items-center justify-center mb-6 group-hover:bg-sps-dark group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-width="2"/></svg></div>
-                        <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Relação Pessoal</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Gestão de Servidores</p></div>
+            return `<div class="space-y-12 py-4 md:py-6 fade-in">
+                <div class="welcome-hero rounded-[40px] p-8 md:p-16 shadow-2xl text-center md:text-left">
+                    <div class="max-w-3xl">
+                        <span class="inline-block px-4 py-1.5 bg-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-sps-primary mb-6">Portal Corporativo</span>
+                        <h1 class="text-3xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tighter uppercase">
+                            Bem-vindo ao Sistema Unificado de Gestão Administrativa
+                        </h1>
+                        <p class="text-white/60 text-xs md:text-lg font-medium leading-relaxed max-w-2xl mb-8 uppercase tracking-wide italic">
+                            Monitoramento integrado de pessoal, processos e fluxos institucionais para suporte às unidades.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
+                    ${isAdmin ? `
+                    <button onclick="state.view='PERSONNEL';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
+                        <div class="w-14 h-14 bg-sps-light text-sps-dark rounded-2xl flex items-center justify-center mb-10 group-hover:bg-sps-dark group-hover:text-white transition-all shadow-inner">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-width="2"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-sps-dark">Relação Pessoal</h3>
+                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Gestão de colaboradores das 12 unidades operacionais.</p>
+                        </div>
                     </button>` : ''}
-                    <button onclick="state.view='PROCESSES';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[160px] md:h-72 shadow-lg">
-                        <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500 group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2"/></svg></div>
-                        <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Processos Suite</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Consulta NUP</p></div>
+
+                    <button onclick="state.view='PROCESSES';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
+                        <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-inner">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-amber-600">Processos Suite</h3>
+                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Consulta e monitoramento de fluxos processuais institucionais.</p>
+                        </div>
                     </button>
-                    <button onclick="state.view='DEMANDS';render();" class="nav-card p-8 md:p-10 rounded-[28px] bg-white border border-slate-200/60 text-left flex flex-col justify-between group min-h-[160px] md:h-72 shadow-lg sm:col-span-2 lg:col-span-1">
-                        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg></div>
-                        <div><h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Demandas</h3><p class="text-[8px] text-slate-400 uppercase font-bold">Histórico de Unidades</p></div>
+
+                    <button onclick="state.view='DEMANDS';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
+                        <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-inner">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-blue-600">Demandas</h3>
+                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Histórico de solicitações administrativas das unidades locais.</p>
+                        </div>
+                    </button>
+
+                    <button onclick="state.view='UTILITIES';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
+                        <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-inner">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-width="2"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-emerald-600">Utilidades e Custos</h3>
+                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Controle de consumo de ENEL e CAGECE por unidade operacional.</p>
+                        </div>
                     </button>
                 </div>
             </div>`;
         }
+
+        function renderUtilities() {
+            const records = state.utilityRecords;
+            const totalCost = records.reduce((acc, r) => acc + parseFloat(r.cost || 0), 0);
+            const enelTotal = records.filter(r => r.type === 'ENEL').reduce((acc, r) => acc + parseFloat(r.cost || 0), 0);
+            const cageceTotal = records.filter(r => r.type === 'CAGECE').reduce((acc, r) => acc + parseFloat(r.cost || 0), 0);
+            
+            const filtered = records.filter(r => {
+                const typeMatch = state.utilityTypeFilter === 'ALL' || r.type === state.utilityTypeFilter;
+                const unitMatch = state.utilityUnitFilter === 'ALL' || r.unitId === state.utilityUnitFilter;
+                return typeMatch && unitMatch;
+            }).sort((a, b) => dateToTimestamp(b.date) - dateToTimestamp(a.date));
+
+            return `<div class="space-y-6 fade-in">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-center gap-6">
+                        <button onclick="state.view='DASHBOARD';render();" class="btn-back">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            Voltar
+                        </button>
+                        <div>
+                            <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800 leading-none">Utilidades e Custos</h1>
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Histórico de ENEL & CAGECE</p>
+                        </div>
+                    </div>
+                    <button onclick="handleStartCreateUtility()" class="bg-emerald-600 text-white px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Lançar Fatura</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[7px] font-black text-slate-400 mb-1 uppercase">Gasto Total Acumulado</p>
+                        <h4 class="text-xl md:text-2xl font-black text-slate-800">${formatCurrency(totalCost)}</h4>
+                    </div>
+                    <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 shadow-sm">
+                        <p class="text-[7px] font-black text-amber-500 mb-1 uppercase text-left">Total Energia (ENEL)</p>
+                        <h4 class="text-xl md:text-2xl font-black text-amber-700">${formatCurrency(enelTotal)}</h4>
+                    </div>
+                    <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100 shadow-sm">
+                        <p class="text-[7px] font-black text-blue-500 mb-1 uppercase text-left">Total Água (CAGECE)</p>
+                        <h4 class="text-xl md:text-2xl font-black text-blue-700">${formatCurrency(cageceTotal)}</h4>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
+                    <div class="px-4 py-6 border-b flex flex-col md:flex-row justify-between gap-4">
+                         <div class="flex flex-col sm:flex-row gap-2">
+                            <select onchange="state.utilityTypeFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
+                                <option value="ALL">Todos os Tipos</option>
+                                <option value="ENEL" ${state.utilityTypeFilter === 'ENEL' ? 'selected' : ''}>ENEL (Energia)</option>
+                                <option value="CAGECE" ${state.utilityTypeFilter === 'CAGECE' ? 'selected' : ''}>CAGECE (Água)</option>
+                            </select>
+                            <select onchange="state.utilityUnitFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
+                                <option value="ALL">Todas Unidades</option>
+                                ${UNITS.map(u => `<option value="${u.id}" ${state.utilityUnitFilter === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="min-w-table w-full text-left">
+                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400 text-[9px]">
+                                <tr>
+                                    <th class="px-6 py-4">Ref.</th>
+                                    <th class="px-6 py-4">Tipo</th>
+                                    <th class="px-6 py-4">Unidade</th>
+                                    <th class="px-6 py-4">Consumo</th>
+                                    <th class="px-6 py-4">Valor</th>
+                                    <th class="px-6 py-4 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 text-[10px] uppercase font-bold">
+                                ${filtered.map((r, idx) => {
+                                    const uName = UNITS.find(u => u.id === r.unitId)?.name || 'N/A';
+                                    const unitType = r.type === 'ENEL' ? 'kWh' : 'm³';
+                                    const typeColor = r.type === 'ENEL' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700';
+                                    return `<tr class="hover:bg-slate-50">
+                                        <td class="px-6 py-4 text-slate-400">${r.date}</td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 rounded-md text-[8px] ${typeColor}">${r.type}</span>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-700">${uName}</td>
+                                        <td class="px-6 py-4 text-slate-500">${r.consumption} ${unitType}</td>
+                                        <td class="px-6 py-4 text-emerald-700">${formatCurrency(r.cost)}</td>
+                                        <td class="px-6 py-4 text-center">
+                                            <button onclick="handleDeleteUtility(${state.utilityRecords.indexOf(r)})" class="text-red-500 font-black hover:underline">Excluir</button>
+                                        </td>
+                                    </tr>`;
+                                }).join('')}
+                                ${filtered.length === 0 ? '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-300 italic">Nenhum registro encontrado.</td></tr>' : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderUtilityModal() {
+            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
+                <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden">
+                    <div class="bg-emerald-600 p-6 text-white flex justify-between items-center px-8">
+                        <span class="w-8"></span>
+                        <h3 class="text-xs font-black uppercase tracking-widest text-white">Lançamento de Fatura</h3>
+                        <button onclick="state.isRegisteringUtility=false;render();" class="text-white">✕</button>
+                    </div>
+                    <form onsubmit="handleSaveUtility(event)" class="p-8 md:p-10 space-y-6 text-left">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Mês Referência</label>
+                                <input id="u-date" type="text" placeholder="MM/AAAA" required maxlength="7" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Tipo de Fatura</label>
+                                <select id="u-type" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none uppercase">
+                                    <option value="ENEL">ENEL (Energia)</option>
+                                    <option value="CAGECE">CAGECE (Água)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Unidade Operacional</label>
+                            <select id="u-unit" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase outline-none">
+                                ${UNITS.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Valor (R$)</label>
+                                <input id="u-cost" type="number" step="0.01" required placeholder="0,00" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Leitura/Consumo</label>
+                                <input id="u-consumption" type="number" required placeholder="kWh ou m³" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none">
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                            <button type="button" onclick="state.isRegisteringUtility=false;render();" class="py-4 bg-slate-100 rounded-xl font-black text-[9px] uppercase text-slate-500 w-full">Cancelar</button>
+                            <button type="submit" class="py-4 bg-emerald-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg w-full">Gravar Fatura</button>
+                        </div>
+                    </form>
+                </div>
+            </div>`;
+        }
+
+        // FUNÇÕES DE LÓGICA
+        window.handleStartCreateUtility = () => { state.isRegisteringUtility = true; render(); };
+        window.handleSaveUtility = (e) => {
+            e.preventDefault();
+            const record = {
+                date: document.getElementById('u-date').value,
+                type: document.getElementById('u-type').value,
+                unitId: document.getElementById('u-unit').value,
+                cost: document.getElementById('u-cost').value,
+                consumption: document.getElementById('u-consumption').value
+            };
+            state.utilityRecords.unshift(record);
+            state.isRegisteringUtility = false;
+            render();
+        };
+        window.handleDeleteUtility = (idx) => {
+            if (confirm('Excluir este lançamento de custo?')) {
+                state.utilityRecords.splice(idx, 1);
+                render();
+            }
+        };
 
         function renderDemands() {
             const counts = { TOTAL: state.demands.length, PENDING: state.demands.filter(d => d.status === 'PENDING').length, PROGRESS: state.demands.filter(d => d.status === 'PROGRESS').length, DONE: state.demands.filter(d => d.status === 'DONE').length };
@@ -493,69 +553,50 @@
 
             return `<div class="space-y-6 fade-in">
                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-4">
-                        <button onclick="state.view='DASHBOARD';render();" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors">←</button>
+                    <div class="flex items-center gap-6">
+                        <button onclick="state.view='DASHBOARD';render();" class="btn-back">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            Voltar
+                        </button>
                         <div>
-                            <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Demandas</h1>
-                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Controle de Unidades</p>
+                            <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800 leading-none">Demandas</h1>
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <label class="flex-1 bg-emerald-600 text-white px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md cursor-pointer hover:bg-emerald-700 text-center">
-                            Importar
-                            <input type="file" class="hidden" accept=".xlsx" onchange="handleImportFile(event, 'DEMANDS')">
-                        </label>
-                        <button onclick="handleStartCreateDemand()" class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Nova Atividade</button>
-                    </div>
+                    <button onclick="handleStartCreateDemand()" class="bg-blue-600 text-white px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Nova Atividade</button>
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[7px] font-black text-slate-400 mb-1 uppercase">Total</p><h4 class="text-xl md:text-2xl font-black">${counts.TOTAL}</h4></div>
-                    <div class="bg-red-50 p-4 md:p-5 rounded-2xl border border-red-100 shadow-sm"><p class="text-[7px] font-black text-red-400 mb-1 uppercase">Pendentes</p><h4 class="text-xl md:text-2xl font-black text-red-600">${counts.PENDING}</h4></div>
-                    <div class="bg-amber-50 p-4 md:p-5 rounded-2xl border border-amber-100 shadow-sm"><p class="text-[7px] font-black text-amber-500 mb-1 uppercase">Andamento</p><h4 class="text-xl md:text-2xl font-black text-amber-600">${counts.PROGRESS}</h4></div>
-                    <div class="bg-emerald-50 p-4 md:p-5 rounded-2xl border border-emerald-100 shadow-sm"><p class="text-[7px] font-black text-emerald-500 mb-1 uppercase">Concluído</p><h4 class="text-xl md:text-2xl font-black text-emerald-600">${counts.DONE}</h4></div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[7px] font-black text-slate-400 mb-1 uppercase">Total</p><h4 class="text-xl md:text-2xl font-black">${counts.TOTAL}</h4></div>
+                    <div class="bg-red-50 p-6 rounded-2xl border border-red-100 shadow-sm"><p class="text-[7px] font-black text-red-400 mb-1 uppercase">Pendentes</p><h4 class="text-xl md:text-2xl font-black text-red-600">${counts.PENDING}</h4></div>
+                    <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 shadow-sm"><p class="text-[7px] font-black text-amber-500 mb-1 uppercase text-left">Andamento</p><h4 class="text-xl md:text-2xl font-black text-amber-600">${counts.PROGRESS}</h4></div>
+                    <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 shadow-sm"><p class="text-[7px] font-black text-emerald-500 mb-1 uppercase text-left">Concluído</p><h4 class="text-xl md:text-2xl font-black text-emerald-600">${counts.DONE}</h4></div>
                 </div>
 
                 <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
-                    <div class="px-4 py-4 md:py-6 border-b flex flex-col md:flex-row justify-between gap-4">
-                        <div class="flex items-center gap-4 overflow-x-auto pb-2 md:pb-0">
-                            <button onclick="state.demandStatusFilter='ALL';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'ALL' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Todas</button>
-                            <button onclick="state.demandStatusFilter='PENDING';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'PENDING' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Pendente</button>
-                            <button onclick="state.demandStatusFilter='PROGRESS';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'PROGRESS' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Andamento</button>
-                            <button onclick="state.demandStatusFilter='DONE';render();" class="text-[9px] font-black uppercase whitespace-nowrap ${state.demandStatusFilter === 'DONE' ? 'text-sps-dark border-b-2 border-sps-dark' : 'text-slate-400'}">Concluído</button>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-2">
+                    <div class="px-4 py-6 border-b flex flex-col md:flex-row justify-between gap-4">
+                         <div class="flex flex-col sm:flex-row gap-2">
                             <select onchange="state.demandUnitFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
                                 <option value="ALL">Todas Unidades</option>
                                 ${UNITS.map(u => `<option value="${u.id}" ${state.demandUnitFilter === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
                             </select>
-                            <input id="demand-search-field" type="text" placeholder="Pesquisar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-4 py-2 rounded-xl border border-slate-200 text-xs w-full sm:w-48 outline-none focus:ring-1 focus:ring-sps-primary">
+                            <input type="text" placeholder="Filtrar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-4 py-2 rounded-xl border border-slate-200 text-xs w-full sm:w-48 outline-none">
                         </div>
                     </div>
-
                     <div class="table-container">
-                        <table class="min-w-table w-full text-left text-[0.85em] md:text-[0.9em]">
-                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400">
-                                <tr>
-                                    <th class="px-6 py-4 w-28">Data</th>
-                                    <th class="px-6 py-4 w-48">Unidade</th>
-                                    <th class="px-6 py-4">Descrição</th>
-                                    <th class="px-6 py-4 w-32">Status</th>
-                                    <th class="px-6 py-4 w-20 text-center">Ações</th>
-                                </tr>
+                        <table class="min-w-table w-full text-left">
+                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400 text-[10px]">
+                                <tr><th class="px-6 py-4">Data</th><th class="px-6 py-4">Unidade</th><th class="px-6 py-4">Descrição</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-center">Ações</th></tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50">
+                            <tbody class="divide-y divide-slate-50 text-xs uppercase font-medium">
                                 ${filtered.map(d => {
                                     const status = DEMAND_STATUS.find(s => s.id === d.status) || DEMAND_STATUS[0];
                                     const uName = UNITS.find(u => u.id === d.unidade)?.name || 'N/A';
-                                    return `<tr class="hover:bg-slate-50 transition-colors">
+                                    return `<tr>
                                         <td class="px-6 py-4 text-slate-400 font-bold">${d.data}</td>
-                                        <td class="px-6 py-4"><span class="text-sps-dark font-black uppercase leading-tight">${uName}</span></td>
-                                        <td class="px-6 py-4 cursor-pointer" onclick="handleViewDemandDetail(${state.demands.indexOf(d)})">
-                                            <span class="demand-description-cell text-slate-800 font-medium">${d.descricao}</span>
-                                        </td>
-                                        <td class="px-6 py-4"><div class="status-pill ${status.color}"><div class="status-dot"></div>${status.label}</div></td>
-                                        <td class="px-6 py-4 text-center"><button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black uppercase text-[0.8em] hover:underline">Editar</button></td>
+                                        <td class="px-6 py-4 text-sps-dark font-black">${uName}</td>
+                                        <td class="px-6 py-4 cursor-pointer" onclick="handleViewDemandDetail(${state.demands.indexOf(d)})"><span class="demand-description-cell truncate block max-w-xs">${d.descricao}</span></td>
+                                        <td class="px-6 py-4"><div class="status-pill ${status.color}">${status.label}</div></td>
+                                        <td class="px-6 py-4 text-center"><button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black hover:underline">Editar</button></td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -573,36 +614,27 @@
 
             return `<div class="space-y-6 fade-in">
                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-4">
-                        <button onclick="state.view='DASHBOARD';render();" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100">←</button>
+                    <div class="flex items-center gap-6">
+                        <button onclick="state.view='DASHBOARD';render();" class="btn-back">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            Voltar
+                        </button>
                         <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Processos Suite</h1>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <input id="process-search-field" type="text" placeholder="Filtrar..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs min-w-[150px] outline-none focus:ring-1 focus:ring-sps-primary">
-                        <label class="bg-emerald-600 text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md cursor-pointer hover:bg-emerald-700">
-                            Importar
-                            <input type="file" class="hidden" accept=".xlsx" onchange="handleImportFile(event, 'PROCESSES')">
-                        </label>
-                        ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md">Novo NUP</button>` : ''}
-                    </div>
+                    ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-8 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md">Novo NUP</button>` : ''}
                 </div>
                 <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
                     <div class="table-container">
-                        <table class="min-w-table w-full text-left text-[0.85em] md:text-[0.9em]">
-                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400">
-                                <tr><th class="px-6 py-5 w-28">Data</th><th class="px-6 py-5 w-56">NUP</th><th class="px-6 py-5">Descrição</th>${canEdit ? `<th class="px-6 py-5 w-20 text-center">Ações</th>` : ''}</tr>
+                        <table class="min-w-table w-full text-left">
+                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400 text-[10px]">
+                                <tr><th class="px-6 py-5">Data</th><th class="px-6 py-5">NUP</th><th class="px-6 py-5">Descrição</th>${canEdit ? `<th class="px-6 py-5 text-center">Ações</th>` : ''}</tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50">
+                            <tbody class="divide-y divide-slate-50 text-xs font-bold uppercase">
                                 ${filtered.map(p => `<tr>
                                     <td class="px-6 py-4 text-slate-400 font-bold">${p.data}</td>
-                                    <td class="px-6 py-4 font-mono text-sps-dark font-black">
-                                        <a href="https://suite.ce.gov.br/" target="_blank" onclick="handleNupClick(event, '${p.nup}')" class="hover:underline flex items-center gap-2">
-                                            ${p.nup || '---'}
-                                            <svg class="w-3 h-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/></svg>
-                                        </a>
-                                    </td>
-                                    <td class="px-6 py-4 text-slate-800 uppercase font-bold leading-tight">${p.descricao || ''}</td>
-                                    ${canEdit ? `<td class="px-6 py-4 text-center"><button onclick="handleStartEdit(${state.processes.indexOf(p)})" class="text-blue-500 font-bold uppercase text-[0.8em] hover:underline">Editar</button></td>` : ''}
+                                    <td class="px-6 py-4 font-mono text-sps-dark font-black"><a href="https://suite.ce.gov.br/" target="_blank" onclick="handleNupClick(event, '${p.nup}')" class="hover:underline">${p.nup || '---'}</a></td>
+                                    <td class="px-6 py-4 text-slate-800 leading-tight">${p.descricao || ''}</td>
+                                    ${canEdit ? `<td class="px-6 py-4 text-center"><button onclick="handleStartEdit(${state.processes.indexOf(p)})" class="text-blue-500 font-bold hover:underline">Editar</button></td>` : ''}
                                 </tr>`).join('')}
                             </tbody>
                         </table>
@@ -613,14 +645,17 @@
 
         function renderPersonnel() {
             return `<div class="space-y-6 fade-in py-4">
-                <div class="flex items-center gap-4 mb-6">
-                    <button onclick="state.view='DASHBOARD';render();" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 text-xl">←</button>
+                <div class="flex items-center gap-6 mb-8">
+                    <button onclick="state.view='DASHBOARD';render();" class="btn-back">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Voltar
+                    </button>
                     <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Relação Pessoal</h1>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    ${UNITS.map(u => `<div class="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:border-sps-primary transition-all cursor-pointer flex flex-col justify-between h-32">
-                        <h3 class="font-black text-slate-700 text-[0.85em] uppercase leading-tight">${u.name}</h3>
-                        <span class="text-[0.65em] font-black uppercase text-sps-primary tracking-widest">Acessar Setor →</span>
+                    ${UNITS.map(u => `<div class="bg-white p-8 rounded-[24px] border border-slate-100 shadow-sm hover:border-sps-primary transition-all cursor-pointer h-40 flex flex-col justify-between group">
+                        <h3 class="font-black text-slate-700 text-xs uppercase group-hover:text-sps-dark">${u.name}</h3>
+                        <span class="text-[9px] font-black uppercase text-sps-primary tracking-widest">Acessar Setor →</span>
                     </div>`).join('')}
                 </div>
             </div>`;
@@ -631,30 +666,21 @@
             const uName = UNITS.find(u => u.id === d.unidade)?.name || '---';
             const status = DEMAND_STATUS.find(s => s.id === d.status) || DEMAND_STATUS[0];
             return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 p-4 fade-in">
-                <div class="bg-white w-full max-w-lg rounded-[28px] shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh]">
-                    <div class="bg-slate-900 p-6 md:p-8 text-white flex justify-between items-center">
-                        <p class="text-[10px] font-black uppercase tracking-widest leading-none">Detalhamento</p>
+                <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh]">
+                    <div class="bg-slate-900 p-8 text-white flex justify-between items-center">
+                        <p class="text-[10px] font-black uppercase tracking-widest">Detalhamento</p>
                         <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg text-white">✕</button>
                     </div>
-                    <div class="p-6 md:p-10 space-y-6 text-left">
-                        <div class="space-y-4 border-b pb-6">
-                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Unidade</p><p class="text-xs font-black uppercase text-slate-900">${uName}</p></div>
-                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Status</p><div class="status-pill ${status.color}">${status.label}</div></div>
+                    <div class="p-8 md:p-10 space-y-8 text-left">
+                        <div class="space-y-4 border-b pb-8">
+                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Unidade</p><p class="text-xs font-black uppercase text-slate-900 leading-tight">${uName}</p></div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Data</p><p class="text-xs font-bold text-slate-800">${d.data}</p></div>
-                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Categoria</p><p class="text-xs font-bold uppercase text-slate-800">${d.tipo}</p></div>
+                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Status</p><div class="status-pill ${status.color}">${status.label}</div></div>
                             </div>
                         </div>
-                        <div class="space-y-3">
-                            <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Descrição:</p>
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 max-h-[250px] overflow-y-auto">
-                                <p class="text-slate-800 font-semibold uppercase text-[11px] leading-relaxed whitespace-pre-wrap">${d.descricao}</p>
-                            </div>
-                        </div>
-                        <div class="pt-4 flex gap-3">
-                            <button onclick="handleStartEditDemand(${state.viewingDemandDetailIndex});state.viewingDemandDetailIndex=null;render();" class="flex-1 py-4 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg">Editar</button>
-                            <button onclick="state.viewingDemandDetailIndex=null;render();" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-[9px] uppercase">Fechar</button>
-                        </div>
+                        <div><p class="text-[9px] font-black uppercase text-slate-400 mb-2">Descrição:</p><p class="text-slate-800 font-semibold uppercase text-[11px] leading-relaxed whitespace-pre-wrap">${d.descricao}</p></div>
+                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[9px] uppercase">Fechar</button>
                     </div>
                 </div>
             </div>`;
@@ -663,20 +689,24 @@
         function renderDemandModal() {
             const isEditing = state.editingDemandIndex !== null;
             const demand = isEditing ? state.demands[state.editingDemandIndex] : null;
-            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-3 md:p-4 fade-in">
-                <div class="bg-white w-full max-w-lg rounded-[28px] shadow-2xl overflow-y-auto max-h-[95vh]">
-                    <div class="bg-blue-600 p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Atualizar Atividade' : 'Novo Registro'}</h3></div>
-                    <form onsubmit="handleSaveDemand(event)" class="p-6 md:p-10 space-y-6 text-left">
+            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
+                <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-y-auto max-h-[95vh]">
+                    <div class="bg-blue-600 p-6 text-white flex justify-between items-center px-8">
+                        <span class="w-8"></span>
+                        <h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Atualizar Atividade' : 'Novo Registro'}</h3>
+                        <button onclick="state.isRegisteringDemand=false;render();" class="text-white">✕</button>
+                    </div>
+                    <form onsubmit="handleSaveDemand(event)" class="p-8 md:p-10 space-y-6 text-left">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="d-date" type="text" value="${demand ? demand.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200"></div>
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Unidade</label><select id="d-unit" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200 uppercase">${UNITS.map(u => `<option value="${u.id}" ${demand && demand.unidade === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select></div>
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="d-date" type="text" value="${demand ? demand.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none"></div>
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Unidade</label><select id="d-unit" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase">${UNITS.map(u => `<option value="${u.id}" ${demand && demand.unidade === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select></div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Categoria</label><select id="d-type" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200 uppercase">${DEMAND_TYPES.map(t => `<option value="${t}" ${demand && demand.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Status</label><select id="d-status" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold outline-none border border-slate-200 uppercase">${DEMAND_STATUS.map(s => `<option value="${s.id}" ${demand && demand.status === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Categoria</label><select id="d-type" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase">${DEMAND_TYPES.map(t => `<option value="${t}" ${demand && demand.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Status</label><select id="d-status" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase">${DEMAND_STATUS.map(s => `<option value="${s.id}" ${demand && demand.status === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
                         </div>
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição Detalhada</label><textarea id="d-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase font-bold outline-none border border-slate-200" rows="5">${demand ? demand.descricao : ''}</textarea></div>
-                        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t"><button type="button" onclick="state.isRegisteringDemand=false;render();" class="py-4 bg-slate-100 rounded-xl font-black text-[9px] uppercase text-slate-500 w-full">Cancelar</button><button type="submit" class="py-4 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg w-full">Gravar Registro</button></div>
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição Detalhada</label><textarea id="d-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase font-bold border border-slate-200 outline-none" rows="5">${demand ? demand.descricao : ''}</textarea></div>
+                        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t"><button type="button" onclick="state.isRegisteringDemand=false;render();" class="py-4 bg-slate-100 rounded-xl font-black text-[9px] uppercase text-slate-500 w-full">Cancelar</button><button type="submit" class="py-4 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg w-full">Gravar</button></div>
                     </form>
                 </div>
             </div>`;
@@ -686,12 +716,16 @@
             const isEditing = state.editingIndex !== null;
             const proc = isEditing ? state.processes[state.editingIndex] : null;
             return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
-                <div class="bg-white w-full max-w-sm rounded-[28px] shadow-2xl overflow-hidden">
-                    <div class="bg-sps-dark p-6 text-white text-center"><h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Editar NUP' : 'Novo NUP'}</h3></div>
-                    <form onsubmit="handleSaveProc(event)" class="p-6 md:p-8 space-y-5 text-left">
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="p-date" type="text" value="${proc ? proc.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200"></div>
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">NUP</label><input id="p-nup" type="text" value="${proc ? proc.nup : '47001.'}" oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-mono border border-slate-200"></div>
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição</label><textarea id="p-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase border border-slate-200" rows="3">${proc ? proc.descricao : ''}</textarea></div>
+                <div class="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden">
+                    <div class="bg-sps-dark p-6 text-white flex justify-between items-center px-8">
+                        <span class="w-8"></span>
+                        <h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Editar NUP' : 'Novo NUP'}</h3>
+                        <button onclick="state.isRegisteringProcess=false;render();" class="text-white">✕</button>
+                    </div>
+                    <form onsubmit="handleSaveProc(event)" class="p-8 space-y-5 text-left">
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="p-date" type="text" value="${proc ? proc.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none"></div>
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">NUP</label><input id="p-nup" type="text" value="${proc ? proc.nup : '47001.'}" oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-mono border border-slate-200 outline-none"></div>
+                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição</label><textarea id="p-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase border border-slate-200 outline-none" rows="3">${proc ? proc.descricao : ''}</textarea></div>
                         <div class="flex gap-3 pt-4"><button type="button" onclick="state.isRegisteringProcess=false;render();" class="flex-1 py-4 bg-slate-100 rounded-xl text-[9px] font-black uppercase text-slate-400">Cancelar</button><button type="submit" class="flex-1 py-4 bg-sps-dark text-white rounded-xl text-[9px] font-black uppercase shadow-lg">Gravar</button></div>
                     </form>
                 </div>
@@ -704,6 +738,7 @@
                 case 'PERSONNEL': return renderPersonnel();
                 case 'PROCESSES': return renderProcesses();
                 case 'DEMANDS': return renderDemands();
+                case 'UTILITIES': return renderUtilities();
                 default: return '';
             }
         }
