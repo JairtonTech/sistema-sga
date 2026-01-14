@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA UNIFICADO DE GESTÃO ADMINISTRATIVA</title>
-    <!-- VERSÃO 10.3 - MÓDULO DE CUSTOS & UTILIDADES -->
+    <title>SISTEMA DE GESTÃO ADMINISTRATIVA SGA</title>
+    <!-- VERSÃO 4.9 - CONFIGURAÇÃO DE E-MAIL ADMINISTRATIVO E FLUXO UNIFICADO -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,21 +36,18 @@
             background-color: #f8fafc;
             margin: 0;
             overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
-            transition: font-size 0.2s ease;
         }
-        
-        .scale-small { font-size: 0.9rem; }
-        .scale-normal { font-size: 1rem; }
-        .scale-large { font-size: 1.15rem; }
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
 
-        .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
+            from { opacity: 0; transform: translateY(20px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
         
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #84b48d; border-radius: 10px; }
 
@@ -58,14 +55,25 @@
             background: radial-gradient(circle at top right, #f0f9f1 0%, #f8fafc 40%);
         }
 
+        .nav-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        .nav-card:hover {
+            transform: translateY(-12px);
+            background: white;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+        }
+
         .status-pill {
-            padding: 4px 10px;
+            padding: 4px 12px;
             border-radius: 9999px;
-            font-size: 0.75em;
+            font-size: 9px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 6px;
         }
@@ -75,108 +83,76 @@
             height: 6px;
             border-radius: 50%;
             background-color: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #064e3b 0%, #3b823e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .glass-header {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
         }
 
-        .table-container {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 16px;
-            background: white;
-        }
-        .min-w-table { min-width: 800px; }
-
-        .nav-card {
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05), 0 5px 15px -5px rgba(0,0,0,0.02);
-            border: 8px solid white;
-        }
-        .nav-card:hover { 
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.12);
-        }
+        .animate-fadeInScale { animation: fadeInScale 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         
-        .accessibility-btn {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            font-weight: 900;
-            font-size: 10px;
-            transition: all 0.2s;
-            border: 1px solid #e2e8f0;
+        input:invalid:not(:placeholder-shown) {
+            border-color: #ef4444;
         }
-        .accessibility-btn.active {
-            background: #064e3b;
-            color: white;
-            border-color: #064e3b;
+        input:invalid:not(:placeholder-shown) + .error-msg {
+            display: block;
         }
-
-        .btn-back {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        .error-msg {
+            display: none;
+            color: #ef4444;
+            font-size: 9px;
             font-weight: 800;
-            font-size: 10px;
-            color: #064e3b;
             text-transform: uppercase;
+            margin-top: 4px;
             letter-spacing: 0.05em;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .welcome-hero {
-            background: linear-gradient(135deg, #064e3b 0%, #1a4d2e 100%);
-            position: relative;
-            overflow: hidden;
         }
     </style>
 <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "path": "https://esm.sh/path@^0.12.7",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
-<body class="dashboard-bg min-h-screen flex flex-col scale-normal">
-    <div id="app" class="flex-1 flex flex-col min-h-screen"></div>
-    <div id="toast">Operação realizada!</div>
+<body class="dashboard-bg">
+    <div id="app"></div>
 
     <script>
+        // CONFIGURAÇÕES GLOBAIS
+        const ADMIN_EMAIL = 'jairton.beserra@sps.ce.gov.br';
+
         const state = {
             view: 'AUTH', 
+            authSubView: 'LOGIN', // 'LOGIN' | 'REGISTER' | 'RECOVER' | 'SUCCESS_REGISTER' | 'SUCCESS_RECOVER'
             user: null, 
             processes: [],
-            demands: [], 
-            utilityRecords: [], // Histórico de faturas ENEL/CAGECE
             processSearch: '',
-            demandSearch: '',
-            utilitySearch: '',
-            utilityTypeFilter: 'ALL',
-            utilityUnitFilter: 'ALL',
+            processSortDir: 'desc',
             isRegisteringProcess: false,
-            isRegisteringDemand: false,
-            isRegisteringUtility: false,
-            viewingDemandDetailIndex: null,
             editingIndex: null,
-            editingDemandIndex: null,
-            editingUtilityIndex: null,
-            loginError: null,
-            layoutScale: 'normal' 
+            selectedIndices: [] 
         };
 
         const AUTHORIZED_USERS = [
@@ -186,8 +162,8 @@
         ];
 
         const UNITS = [
-            { id: 'CPSB', name: 'CPSB - COORDENADORIA' },
-            { id: 'CEPP', name: 'CEPP - CÉLULA DE POLÍTICAS' },
+            { id: 'CPSB', name: 'CPSB' },
+            { id: 'CEPP', name: 'CEPP' },
             { id: '1', name: 'CENTRO COMUNITÁRIO FAROL' },
             { id: '2', name: 'CENTRO COMUNITÁRIO SÃO VICENTE' },
             { id: '3', name: 'CENTRO COMUNITÁRIO SANTA TEREZINHA' },
@@ -202,13 +178,7 @@
             { id: '12', name: 'CIRCO PALMEIRAS' },
         ];
 
-        const DEMAND_TYPES = ["Manutenção", "Administrativo", "RH", "Infraestrutura", "Equipamentos", "Outros"];
-        const DEMAND_STATUS = [
-            { id: 'PENDING', label: 'Pendente', color: 'text-red-600 bg-red-50 border-red-100' },
-            { id: 'PROGRESS', label: 'Andamento', color: 'text-amber-600 bg-amber-50 border-amber-100' },
-            { id: 'DONE', label: 'Concluído', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
-        ];
-
+        // --- UTILITÁRIOS ---
         function getTodayFormatted() {
             const today = new Date();
             const dd = String(today.getDate()).padStart(2, '0');
@@ -217,519 +187,226 @@
             return `${dd}/${mm}/${yyyy}`;
         }
 
-        function formatCurrency(val) {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-        }
+        window.maskNUP = (v) => {
+            v = v.replace(/\D/g, "");
+            if (v.length > 17) v = v.substring(0, 17);
+            let r = "";
+            if (v.length > 0) r += v.substring(0, 5);
+            if (v.length > 5) r += "." + v.substring(5, 11);
+            if (v.length > 11) r += "/" + v.substring(11, 15);
+            if (v.length > 15) r += "-" + v.substring(15, 17);
+            return r;
+        };
 
-        function dateToTimestamp(dateStr) {
-            if (!dateStr || typeof dateStr !== 'string') return 0;
-            const parts = dateStr.split('/');
-            if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-            if (parts.length === 2) return new Date(parts[1], parts[0] - 1, 1).getTime();
-            return 0;
-        }
-
-        window.setLayoutScale = (scale) => {
-            state.layoutScale = scale;
-            document.body.classList.remove('scale-small', 'scale-normal', 'scale-large');
-            document.body.classList.add(`scale-${scale}`);
-            render();
+        window.maskDate = (v) => {
+            v = v.replace(/\D/g, "");
+            if (v.length > 8) v = v.substring(0, 8);
+            let r = "";
+            if (v.length > 0) r += v.substring(0, 2);
+            if (v.length > 2) r += "/" + v.substring(2, 4);
+            if (v.length > 4) r += "/" + v.substring(4, 8);
+            return r;
         };
 
         function render() {
             const app = document.getElementById('app');
-            if (state.view === 'AUTH') { app.innerHTML = renderLogin(); return; }
+            
+            const activeId = document.activeElement ? document.activeElement.id : null;
+            const cursorStart = document.activeElement ? document.activeElement.selectionStart : null;
+            const cursorEnd = document.activeElement ? document.activeElement.selectionEnd : null;
+
+            if (state.view === 'AUTH') {
+                app.innerHTML = renderLogin();
+                return;
+            }
 
             app.innerHTML = `
-                <div class="flex flex-col min-h-screen">
-                    ${renderHeader()}
-                    <main class="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10 relative z-10">
-                        <div class="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none"></div>
-                        <div id="app-container" class="max-w-7xl mx-auto w-full transition-transform duration-300">
-                            ${renderContent()}
+                <div class="flex flex-col h-screen overflow-hidden text-left">
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="flex-1 flex flex-col overflow-hidden">
+                            ${renderHeader()}
+                            <main class="flex-1 overflow-y-auto relative">
+                                <div class="absolute inset-0 bg-grid-pattern opacity-[0.03] pointer-events-none"></div>
+                                <div class="h-full relative z-10">${renderContent()}</div>
+                            </main>
                         </div>
-                    </main>
+                    </div>
                     ${renderFooter()}
                 </div>
                 ${state.isRegisteringProcess ? renderProcessModal() : ''}
-                ${state.isRegisteringDemand ? renderDemandModal() : ''}
-                ${state.isRegisteringUtility ? renderUtilityModal() : ''}
-                ${state.viewingDemandDetailIndex !== null ? renderDemandDetailModal() : ''}
+            `;
+
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    if (cursorStart !== null && cursorEnd !== null) {
+                        try { el.setSelectionRange(cursorStart, cursorEnd); } catch (e) {}
+                    }
+                }
+            }
+        }
+
+        function renderFooter() {
+            return `
+                <footer class="bg-white/80 backdrop-blur-md border-t border-slate-100 py-4 px-10 flex flex-col sm:flex-row items-center justify-between gap-4 z-50">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                            Desenvolvido por <span class="text-sps-dark">Jairton Filho</span> © 2025
+                        </p>
+                    </div>
+                    <a href="https://github.com/JairtonTech" target="_blank" class="flex items-center gap-3 px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all group border border-slate-100">
+                        <svg class="w-4 h-4 text-slate-800 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-slate-900 transition-colors">JairtonTech</span>
+                    </a>
+                </footer>
+            `;
+        }
+
+        function renderLogin() {
+            let authContent = '';
+            
+            if (state.authSubView === 'LOGIN') {
+                authContent = `
+                    <form onsubmit="handleLogin(event)" class="p-10 space-y-6 animate-fadeInScale">
+                        ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[10px] font-bold uppercase">${state.loginError}</p>` : ''}
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário</label>
+                            <input id="l-user" type="text" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all placeholder-slate-300" placeholder="nome.sobrenome">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Senha</label>
+                            <input id="l-pass" type="password" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all placeholder-slate-300" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Autenticar</button>
+                        
+                        <div class="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-50">
+                            <button type="button" onclick="state.authSubView='REGISTER';render();" class="flex-1 text-[10px] font-black uppercase text-sps-primary hover:text-sps-dark transition-colors tracking-widest py-2">Solicitar Registro</button>
+                            <button type="button" onclick="state.authSubView='RECOVER';render();" class="flex-1 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-colors tracking-widest py-2">Recuperar Acesso</button>
+                        </div>
+                    </form>
+                `;
+            } else if (state.authSubView === 'REGISTER') {
+                authContent = `
+                    <form onsubmit="handleRequestRegister(event)" class="p-10 space-y-5 animate-fadeInScale">
+                        <h3 class="text-xs font-black text-sps-dark uppercase tracking-widest mb-4">Solicitação de Novo Acesso</h3>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Nome Completo</label>
+                            <input type="text" id="reg-name" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs" placeholder="Seu nome completo">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">E-mail</label>
+                            <input type="email" id="reg-email" required autocomplete="email" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs" placeholder="exemplo@email.com">
+                            <span class="error-msg">Por favor, insira um endereço de e-mail válido.</span>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário Desejado</label>
+                            <input type="text" id="reg-user" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs" placeholder="nome.sobrenome">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Unidade Operacional</label>
+                            <select id="reg-unit" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all text-xs appearance-none bg-white">
+                                <option value="">SELECIONE SUA UNIDADE...</option>
+                                ${UNITS.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Enviar Solicitação</button>
+                        <button type="button" onclick="state.authSubView='LOGIN';render();" class="w-full text-[10px] font-black uppercase text-slate-400 tracking-widest py-2">Voltar ao Login</button>
+                    </form>
+                `;
+            } else if (state.authSubView === 'RECOVER') {
+                authContent = `
+                    <form onsubmit="handleRequestRecover(event)" class="p-10 space-y-6 animate-fadeInScale">
+                        <h3 class="text-xs font-black text-sps-dark uppercase tracking-widest mb-4">Recuperação de Credenciais</h3>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold leading-relaxed mb-4">Informe seu usuário ou CPF para receber o link de redefinição.</p>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário ou Matrícula</label>
+                            <input type="text" id="rec-id" required class="w-full px-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-sps-primary outline-none transition-all placeholder-slate-300" placeholder="nome.sobrenome ou 000.000.000-00">
+                        </div>
+                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-2xl font-bold uppercase text-xs tracking-widest hover:shadow-xl active:scale-95 transition-all">Solicitar Link</button>
+                        <button type="button" onclick="state.authSubView='LOGIN';render();" class="w-full text-[10px] font-black uppercase text-slate-400 tracking-widest py-2">Voltar ao Login</button>
+                    </form>
+                `;
+            } else if (state.authSubView === 'SUCCESS_REGISTER' || state.authSubView === 'SUCCESS_RECOVER') {
+                const isReg = state.authSubView === 'SUCCESS_REGISTER';
+                authContent = `
+                    <div class="p-12 text-center space-y-8 animate-fadeInScale">
+                        <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter">${isReg ? 'Solicitação Realizada!' : 'Recuperação Enviada!'}</h3>
+                        <p class="text-[11px] text-slate-500 uppercase font-bold leading-relaxed tracking-widest">
+                            Sua demanda foi encaminhada com sucesso para o administrador <span class="text-sps-dark">${ADMIN_EMAIL}</span>.
+                        </p>
+                        <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 text-left">
+                            <h4 class="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                Instruções de Acompanhamento
+                            </h4>
+                            <p class="text-[9px] text-amber-600 uppercase font-bold leading-relaxed">
+                                • A confirmação será enviada para seu e-mail de contato.<br>
+                                • Caso não visualize, verifique a caixa de <span class="text-amber-800">SPAM ou Lixo Eletrônico</span>.<br>
+                                • O administrador processará seu pedido em breve.
+                            </p>
+                        </div>
+                        <button onclick="state.authSubView='LOGIN';render();" class="w-full bg-sps-dark text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] hover:shadow-xl transition-all">Voltar ao Login</button>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="min-h-screen flex flex-col bg-sps-light fade-in">
+                    <div class="flex-1 flex items-center justify-center p-4">
+                        <div class="max-w-xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
+                            <div class="bg-sps-dark p-12 text-center text-white flex flex-col items-center justify-center">
+                                <div class="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-6 border border-white/20">SGA</div>
+                                <h1 class="text-xl md:text-2xl font-bold uppercase tracking-widest whitespace-nowrap">Sistema de Gestão Administrativa</h1>
+                            </div>
+                            
+                            ${authContent}
+
+                            <!-- Rodapé do Card com Versão -->
+                            <div class="bg-slate-50 p-6 border-t border-slate-100 flex items-center justify-between">
+                                <div class="flex gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+                                    <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+                                </div>
+                                <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest">SGA v4.9 Stable</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${renderFooter()}
+                </div>
             `;
         }
 
         function renderHeader() {
-            return `<header class="glass-header h-16 md:h-20 flex items-center justify-between px-4 md:px-10 sticky top-0 z-[100]">
-                <div class="flex items-center gap-3 md:gap-5 cursor-pointer" onclick="state.view='DASHBOARD';render();">
-                    <div class="w-8 h-8 md:w-10 md:h-10 bg-sps-dark rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-md">
-                        <svg class="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
-                    </div>
-                    <h1 class="text-[9px] md:text-xs font-black text-slate-800 uppercase tracking-tighter">Gestão Administrativa</h1>
-                </div>
-                
-                <div class="flex items-center gap-4">
-                    <div class="hidden md:flex items-center bg-white/50 p-1 rounded-xl border border-slate-200 gap-1">
-                        <button onclick="setLayoutScale('small')" class="accessibility-btn ${state.layoutScale === 'small' ? 'active' : ''}">A-</button>
-                        <button onclick="setLayoutScale('normal')" class="accessibility-btn ${state.layoutScale === 'normal' ? 'active' : ''}">A</button>
-                        <button onclick="setLayoutScale('large')" class="accessibility-btn ${state.layoutScale === 'large' ? 'active' : ''}">A+</button>
-                    </div>
-
-                    <div class="flex items-center gap-3 md:gap-8">
-                        <div class="text-right hidden sm:block">
-                            <p class="text-[10px] font-black text-slate-900 uppercase leading-none">Olá, <span class="text-sps-primary">${state.user.name.split(' ')[0]}</span></p>
-                            <span class="text-[8px] font-black uppercase text-slate-400">${state.user.role}</span>
-                        </div>
-                        <button onclick="state.view='AUTH';state.user=null;render();" class="text-[8px] md:text-[9px] font-black text-white bg-red-500 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl uppercase tracking-widest shadow-sm hover:bg-red-600 transition-colors">Sair</button>
-                    </div>
-                </div>
-            </header>`;
-        }
-
-        function renderFooter() {
-            return `<footer class="bg-white/90 border-t border-slate-100 py-4 px-4 md:px-10 flex flex-col md:flex-row items-center justify-between gap-3 text-center">
-                <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Desenvolvido por <span class="text-sps-dark">Jairton Filho</span> © 2025</p>
-                <span class="text-[8px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest">SISTEMA ATIVO v10.3</span>
-            </footer>`;
-        }
-
-        function renderLogin() {
-            return `<div class="min-h-screen flex items-center justify-center p-4 bg-sps-light">
-                <div class="max-w-md w-full bg-white rounded-[32px] shadow-2xl overflow-hidden border">
-                    <div class="bg-sps-dark p-10 md:p-14 text-center text-white">
-                        <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/20 text-white">
-                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
-                        </div>
-                        <h1 class="text-[11px] md:text-sm font-black uppercase tracking-[0.2em] text-white leading-relaxed">
-                            Sistema Unificado de Gestão Administrativa
-                        </h1>
-                    </div>
-                    <form onsubmit="handleLogin(event)" class="p-8 md:p-12 space-y-6">
-                        ${state.loginError ? `<p class="bg-red-50 p-3 rounded text-red-600 text-[9px] font-bold uppercase">${state.loginError}</p>` : ''}
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Usuário</label>
-                            <input id="l-user" type="text" required class="w-full px-4 py-4 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-sps-primary/20 transition-all font-medium text-slate-700" placeholder="nome.sobrenome">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Senha</label>
-                            <input id="l-pass" type="password" required class="w-full px-4 py-4 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-sps-primary/20 transition-all font-medium text-slate-700" placeholder="••••••••">
-                        </div>
-                        <button type="submit" class="w-full bg-sps-dark text-white py-5 rounded-xl font-bold uppercase text-[10px] tracking-[0.2em] active:scale-95 transition-transform shadow-lg">Autenticar</button>
-                    </form>
-                </div>
-            </div>`;
-        }
-
-        function renderDashboardHub() {
-            const isAdmin = state.user.role === 'ADMIN';
-            return `<div class="space-y-12 py-4 md:py-6 fade-in">
-                <div class="welcome-hero rounded-[40px] p-8 md:p-16 shadow-2xl text-center md:text-left">
-                    <div class="max-w-3xl">
-                        <span class="inline-block px-4 py-1.5 bg-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-sps-primary mb-6">Portal Corporativo</span>
-                        <h1 class="text-3xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tighter uppercase">
-                            Bem-vindo ao Sistema Unificado de Gestão Administrativa
-                        </h1>
-                        <p class="text-white/60 text-xs md:text-lg font-medium leading-relaxed max-w-2xl mb-8 uppercase tracking-wide italic">
-                            Monitoramento integrado de pessoal, processos e fluxos institucionais para suporte às unidades.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
-                    ${isAdmin ? `
-                    <button onclick="state.view='PERSONNEL';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
-                        <div class="w-14 h-14 bg-sps-light text-sps-dark rounded-2xl flex items-center justify-center mb-10 group-hover:bg-sps-dark group-hover:text-white transition-all shadow-inner">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-width="2"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-sps-dark">Relação Pessoal</h3>
-                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Gestão de colaboradores das 12 unidades operacionais.</p>
-                        </div>
-                    </button>` : ''}
-
-                    <button onclick="state.view='PROCESSES';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
-                        <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-inner">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-amber-600">Processos Suite</h3>
-                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Consulta e monitoramento de fluxos processuais institucionais.</p>
-                        </div>
-                    </button>
-
-                    <button onclick="state.view='DEMANDS';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
-                        <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-inner">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-blue-600">Demandas</h3>
-                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Histórico de solicitações administrativas das unidades locais.</p>
-                        </div>
-                    </button>
-
-                    <button onclick="state.view='UTILITIES';render();" class="nav-card p-8 rounded-[32px] bg-white text-left flex flex-col justify-between group min-h-[250px]">
-                        <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-inner">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-width="2"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2 group-hover:text-emerald-600">Utilidades e Custos</h3>
-                            <p class="text-[9px] text-slate-400 uppercase font-black leading-relaxed">Controle de consumo de ENEL e CAGECE por unidade operacional.</p>
-                        </div>
-                    </button>
-                </div>
-            </div>`;
-        }
-
-        function renderUtilities() {
-            const records = state.utilityRecords;
-            const totalCost = records.reduce((acc, r) => acc + parseFloat(r.cost || 0), 0);
-            const enelTotal = records.filter(r => r.type === 'ENEL').reduce((acc, r) => acc + parseFloat(r.cost || 0), 0);
-            const cageceTotal = records.filter(r => r.type === 'CAGECE').reduce((acc, r) => acc + parseFloat(r.cost || 0), 0);
-            
-            const filtered = records.filter(r => {
-                const typeMatch = state.utilityTypeFilter === 'ALL' || r.type === state.utilityTypeFilter;
-                const unitMatch = state.utilityUnitFilter === 'ALL' || r.unitId === state.utilityUnitFilter;
-                return typeMatch && unitMatch;
-            }).sort((a, b) => dateToTimestamp(b.date) - dateToTimestamp(a.date));
-
-            return `<div class="space-y-6 fade-in">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-6">
-                        <button onclick="state.view='DASHBOARD';render();" class="btn-back">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Voltar
-                        </button>
-                        <div>
-                            <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800 leading-none">Utilidades e Custos</h1>
-                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Histórico de ENEL & CAGECE</p>
+            return `
+                <header class="glass-header h-20 flex items-center justify-between px-10 z-50">
+                    <div class="flex items-center gap-5 cursor-pointer group" onclick="state.view='DASHBOARD';render();">
+                        <div class="w-10 h-10 bg-sps-dark rounded-xl flex items-center justify-center text-white font-black text-xs transition-transform group-hover:scale-105">SGA</div>
+                        <div class="hidden md:block">
+                            <h1 class="text-sm font-black text-slate-800 uppercase tracking-tight whitespace-nowrap">Gestão Administrativa <span class="text-slate-400 opacity-60 ml-2 font-bold tracking-widest">| Plataforma Unificada</span></h1>
                         </div>
                     </div>
-                    <button onclick="handleStartCreateUtility()" class="bg-emerald-600 text-white px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Lançar Fatura</button>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <p class="text-[7px] font-black text-slate-400 mb-1 uppercase">Gasto Total Acumulado</p>
-                        <h4 class="text-xl md:text-2xl font-black text-slate-800">${formatCurrency(totalCost)}</h4>
-                    </div>
-                    <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 shadow-sm">
-                        <p class="text-[7px] font-black text-amber-500 mb-1 uppercase text-left">Total Energia (ENEL)</p>
-                        <h4 class="text-xl md:text-2xl font-black text-amber-700">${formatCurrency(enelTotal)}</h4>
-                    </div>
-                    <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100 shadow-sm">
-                        <p class="text-[7px] font-black text-blue-500 mb-1 uppercase text-left">Total Água (CAGECE)</p>
-                        <h4 class="text-xl md:text-2xl font-black text-blue-700">${formatCurrency(cageceTotal)}</h4>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
-                    <div class="px-4 py-6 border-b flex flex-col md:flex-row justify-between gap-4">
-                         <div class="flex flex-col sm:flex-row gap-2">
-                            <select onchange="state.utilityTypeFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
-                                <option value="ALL">Todos os Tipos</option>
-                                <option value="ENEL" ${state.utilityTypeFilter === 'ENEL' ? 'selected' : ''}>ENEL (Energia)</option>
-                                <option value="CAGECE" ${state.utilityTypeFilter === 'CAGECE' ? 'selected' : ''}>CAGECE (Água)</option>
-                            </select>
-                            <select onchange="state.utilityUnitFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
-                                <option value="ALL">Todas Unidades</option>
-                                ${UNITS.map(u => `<option value="${u.id}" ${state.utilityUnitFilter === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="min-w-table w-full text-left">
-                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400 text-[9px]">
-                                <tr>
-                                    <th class="px-6 py-4">Ref.</th>
-                                    <th class="px-6 py-4">Tipo</th>
-                                    <th class="px-6 py-4">Unidade</th>
-                                    <th class="px-6 py-4">Consumo</th>
-                                    <th class="px-6 py-4">Valor</th>
-                                    <th class="px-6 py-4 text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50 text-[10px] uppercase font-bold">
-                                ${filtered.map((r, idx) => {
-                                    const uName = UNITS.find(u => u.id === r.unitId)?.name || 'N/A';
-                                    const unitType = r.type === 'ENEL' ? 'kWh' : 'm³';
-                                    const typeColor = r.type === 'ENEL' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700';
-                                    return `<tr class="hover:bg-slate-50">
-                                        <td class="px-6 py-4 text-slate-400">${r.date}</td>
-                                        <td class="px-6 py-4">
-                                            <span class="px-2 py-1 rounded-md text-[8px] ${typeColor}">${r.type}</span>
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-700">${uName}</td>
-                                        <td class="px-6 py-4 text-slate-500">${r.consumption} ${unitType}</td>
-                                        <td class="px-6 py-4 text-emerald-700">${formatCurrency(r.cost)}</td>
-                                        <td class="px-6 py-4 text-center">
-                                            <button onclick="handleDeleteUtility(${state.utilityRecords.indexOf(r)})" class="text-red-500 font-black hover:underline">Excluir</button>
-                                        </td>
-                                    </tr>`;
-                                }).join('')}
-                                ${filtered.length === 0 ? '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-300 italic">Nenhum registro encontrado.</td></tr>' : ''}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderUtilityModal() {
-            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
-                <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden">
-                    <div class="bg-emerald-600 p-6 text-white flex justify-between items-center px-8">
-                        <span class="w-8"></span>
-                        <h3 class="text-xs font-black uppercase tracking-widest text-white">Lançamento de Fatura</h3>
-                        <button onclick="state.isRegisteringUtility=false;render();" class="text-white">✕</button>
-                    </div>
-                    <form onsubmit="handleSaveUtility(event)" class="p-8 md:p-10 space-y-6 text-left">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Mês Referência</label>
-                                <input id="u-date" type="text" placeholder="MM/AAAA" required maxlength="7" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none">
+                    <div class="flex items-center gap-8">
+                        <div class="text-right flex items-center gap-4">
+                            <div class="hidden sm:block">
+                                <p class="text-[10px] font-black text-slate-900 uppercase leading-none mb-1">Olá, <span class="text-sps-primary">${state.user.name.split(' ')[0]}</span></p>
+                                <div class="flex items-center justify-end gap-2">
+                                    <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-500">${state.user.role}</span>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Tipo de Fatura</label>
-                                <select id="u-type" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none uppercase">
-                                    <option value="ENEL">ENEL (Energia)</option>
-                                    <option value="CAGECE">CAGECE (Água)</option>
-                                </select>
-                            </div>
+                            <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-sps-dark border border-white shadow-sm">${state.user.name.charAt(0)}</div>
                         </div>
-                        <div>
-                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Unidade Operacional</label>
-                            <select id="u-unit" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase outline-none">
-                                ${UNITS.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Valor (R$)</label>
-                                <input id="u-cost" type="number" step="0.01" required placeholder="0,00" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Leitura/Consumo</label>
-                                <input id="u-consumption" type="number" required placeholder="kWh ou m³" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none">
-                            </div>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                            <button type="button" onclick="state.isRegisteringUtility=false;render();" class="py-4 bg-slate-100 rounded-xl font-black text-[9px] uppercase text-slate-500 w-full">Cancelar</button>
-                            <button type="submit" class="py-4 bg-emerald-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg w-full">Gravar Fatura</button>
-                        </div>
-                    </form>
-                </div>
-            </div>`;
-        }
-
-        // FUNÇÕES DE LÓGICA
-        window.handleStartCreateUtility = () => { state.isRegisteringUtility = true; render(); };
-        window.handleSaveUtility = (e) => {
-            e.preventDefault();
-            const record = {
-                date: document.getElementById('u-date').value,
-                type: document.getElementById('u-type').value,
-                unitId: document.getElementById('u-unit').value,
-                cost: document.getElementById('u-cost').value,
-                consumption: document.getElementById('u-consumption').value
-            };
-            state.utilityRecords.unshift(record);
-            state.isRegisteringUtility = false;
-            render();
-        };
-        window.handleDeleteUtility = (idx) => {
-            if (confirm('Excluir este lançamento de custo?')) {
-                state.utilityRecords.splice(idx, 1);
-                render();
-            }
-        };
-
-        function renderDemands() {
-            const counts = { TOTAL: state.demands.length, PENDING: state.demands.filter(d => d.status === 'PENDING').length, PROGRESS: state.demands.filter(d => d.status === 'PROGRESS').length, DONE: state.demands.filter(d => d.status === 'DONE').length };
-            const filtered = state.demands.filter(d => {
-                const sMatch = d.descricao.toLowerCase().includes(state.demandSearch.toLowerCase()) || d.tipo.toLowerCase().includes(state.demandSearch.toLowerCase());
-                const statusMatch = state.demandStatusFilter === 'ALL' || d.status === state.demandStatusFilter;
-                const uMatch = state.demandUnitFilter === 'ALL' || d.unidade === state.demandUnitFilter;
-                return sMatch && statusMatch && uMatch;
-            }).sort((a, b) => dateToTimestamp(b.data) - dateToTimestamp(a.data));
-
-            return `<div class="space-y-6 fade-in">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-6">
-                        <button onclick="state.view='DASHBOARD';render();" class="btn-back">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Voltar
-                        </button>
-                        <div>
-                            <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800 leading-none">Demandas</h1>
-                        </div>
+                        <button onclick="state.view='AUTH';state.user=null;render();" class="text-[9px] font-black text-white bg-red-500 px-6 py-3 rounded-xl hover:bg-red-600 shadow-lg active:scale-95 transition-all uppercase tracking-widest">Sair</button>
                     </div>
-                    <button onclick="handleStartCreateDemand()" class="bg-blue-600 text-white px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Nova Atividade</button>
-                </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"><p class="text-[7px] font-black text-slate-400 mb-1 uppercase">Total</p><h4 class="text-xl md:text-2xl font-black">${counts.TOTAL}</h4></div>
-                    <div class="bg-red-50 p-6 rounded-2xl border border-red-100 shadow-sm"><p class="text-[7px] font-black text-red-400 mb-1 uppercase">Pendentes</p><h4 class="text-xl md:text-2xl font-black text-red-600">${counts.PENDING}</h4></div>
-                    <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 shadow-sm"><p class="text-[7px] font-black text-amber-500 mb-1 uppercase text-left">Andamento</p><h4 class="text-xl md:text-2xl font-black text-amber-600">${counts.PROGRESS}</h4></div>
-                    <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 shadow-sm"><p class="text-[7px] font-black text-emerald-500 mb-1 uppercase text-left">Concluído</p><h4 class="text-xl md:text-2xl font-black text-emerald-600">${counts.DONE}</h4></div>
-                </div>
-
-                <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
-                    <div class="px-4 py-6 border-b flex flex-col md:flex-row justify-between gap-4">
-                         <div class="flex flex-col sm:flex-row gap-2">
-                            <select onchange="state.demandUnitFilter=this.value;render();" class="px-3 py-2 rounded-xl border border-slate-200 text-[9px] font-black uppercase outline-none">
-                                <option value="ALL">Todas Unidades</option>
-                                ${UNITS.map(u => `<option value="${u.id}" ${state.demandUnitFilter === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-                            </select>
-                            <input type="text" placeholder="Filtrar..." oninput="state.demandSearch=this.value;render();" value="${state.demandSearch}" class="px-4 py-2 rounded-xl border border-slate-200 text-xs w-full sm:w-48 outline-none">
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="min-w-table w-full text-left">
-                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400 text-[10px]">
-                                <tr><th class="px-6 py-4">Data</th><th class="px-6 py-4">Unidade</th><th class="px-6 py-4">Descrição</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-center">Ações</th></tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50 text-xs uppercase font-medium">
-                                ${filtered.map(d => {
-                                    const status = DEMAND_STATUS.find(s => s.id === d.status) || DEMAND_STATUS[0];
-                                    const uName = UNITS.find(u => u.id === d.unidade)?.name || 'N/A';
-                                    return `<tr>
-                                        <td class="px-6 py-4 text-slate-400 font-bold">${d.data}</td>
-                                        <td class="px-6 py-4 text-sps-dark font-black">${uName}</td>
-                                        <td class="px-6 py-4 cursor-pointer" onclick="handleViewDemandDetail(${state.demands.indexOf(d)})"><span class="demand-description-cell truncate block max-w-xs">${d.descricao}</span></td>
-                                        <td class="px-6 py-4"><div class="status-pill ${status.color}">${status.label}</div></td>
-                                        <td class="px-6 py-4 text-center"><button onclick="handleStartEditDemand(${state.demands.indexOf(d)})" class="text-blue-600 font-black hover:underline">Editar</button></td>
-                                    </tr>`;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderProcesses() {
-            const canEdit = state.user.role === 'ADMIN';
-            const filtered = state.processes
-                .filter(p => p.nup.toLowerCase().includes(state.processSearch.toLowerCase()) || p.descricao.toLowerCase().includes(state.processSearch.toLowerCase()))
-                .sort((a, b) => dateToTimestamp(b.data) - dateToTimestamp(a.data));
-
-            return `<div class="space-y-6 fade-in">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-center gap-6">
-                        <button onclick="state.view='DASHBOARD';render();" class="btn-back">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Voltar
-                        </button>
-                        <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Processos Suite</h1>
-                    </div>
-                    ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-8 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md">Novo NUP</button>` : ''}
-                </div>
-                <div class="bg-white rounded-[24px] border border-slate-200 shadow-xl overflow-hidden">
-                    <div class="table-container">
-                        <table class="min-w-table w-full text-left">
-                            <thead class="bg-slate-50 font-black uppercase border-b text-slate-400 text-[10px]">
-                                <tr><th class="px-6 py-5">Data</th><th class="px-6 py-5">NUP</th><th class="px-6 py-5">Descrição</th>${canEdit ? `<th class="px-6 py-5 text-center">Ações</th>` : ''}</tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50 text-xs font-bold uppercase">
-                                ${filtered.map(p => `<tr>
-                                    <td class="px-6 py-4 text-slate-400 font-bold">${p.data}</td>
-                                    <td class="px-6 py-4 font-mono text-sps-dark font-black"><a href="https://suite.ce.gov.br/" target="_blank" onclick="handleNupClick(event, '${p.nup}')" class="hover:underline">${p.nup || '---'}</a></td>
-                                    <td class="px-6 py-4 text-slate-800 leading-tight">${p.descricao || ''}</td>
-                                    ${canEdit ? `<td class="px-6 py-4 text-center"><button onclick="handleStartEdit(${state.processes.indexOf(p)})" class="text-blue-500 font-bold hover:underline">Editar</button></td>` : ''}
-                                </tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderPersonnel() {
-            return `<div class="space-y-6 fade-in py-4">
-                <div class="flex items-center gap-6 mb-8">
-                    <button onclick="state.view='DASHBOARD';render();" class="btn-back">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                        Voltar
-                    </button>
-                    <h1 class="text-xl md:text-2xl font-black uppercase text-slate-800">Relação Pessoal</h1>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    ${UNITS.map(u => `<div class="bg-white p-8 rounded-[24px] border border-slate-100 shadow-sm hover:border-sps-primary transition-all cursor-pointer h-40 flex flex-col justify-between group">
-                        <h3 class="font-black text-slate-700 text-xs uppercase group-hover:text-sps-dark">${u.name}</h3>
-                        <span class="text-[9px] font-black uppercase text-sps-primary tracking-widest">Acessar Setor →</span>
-                    </div>`).join('')}
-                </div>
-            </div>`;
-        }
-
-        function renderDemandDetailModal() {
-            const d = state.demands[state.viewingDemandDetailIndex];
-            const uName = UNITS.find(u => u.id === d.unidade)?.name || '---';
-            const status = DEMAND_STATUS.find(s => s.id === d.status) || DEMAND_STATUS[0];
-            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 p-4 fade-in">
-                <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh]">
-                    <div class="bg-slate-900 p-8 text-white flex justify-between items-center">
-                        <p class="text-[10px] font-black uppercase tracking-widest">Detalhamento</p>
-                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg text-white">✕</button>
-                    </div>
-                    <div class="p-8 md:p-10 space-y-8 text-left">
-                        <div class="space-y-4 border-b pb-8">
-                            <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Unidade</p><p class="text-xs font-black uppercase text-slate-900 leading-tight">${uName}</p></div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Data</p><p class="text-xs font-bold text-slate-800">${d.data}</p></div>
-                                <div><p class="text-[9px] font-black uppercase text-slate-400 mb-1">Status</p><div class="status-pill ${status.color}">${status.label}</div></div>
-                            </div>
-                        </div>
-                        <div><p class="text-[9px] font-black uppercase text-slate-400 mb-2">Descrição:</p><p class="text-slate-800 font-semibold uppercase text-[11px] leading-relaxed whitespace-pre-wrap">${d.descricao}</p></div>
-                        <button onclick="state.viewingDemandDetailIndex=null;render();" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[9px] uppercase">Fechar</button>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        function renderDemandModal() {
-            const isEditing = state.editingDemandIndex !== null;
-            const demand = isEditing ? state.demands[state.editingDemandIndex] : null;
-            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
-                <div class="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-y-auto max-h-[95vh]">
-                    <div class="bg-blue-600 p-6 text-white flex justify-between items-center px-8">
-                        <span class="w-8"></span>
-                        <h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Atualizar Atividade' : 'Novo Registro'}</h3>
-                        <button onclick="state.isRegisteringDemand=false;render();" class="text-white">✕</button>
-                    </div>
-                    <form onsubmit="handleSaveDemand(event)" class="p-8 md:p-10 space-y-6 text-left">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="d-date" type="text" value="${demand ? demand.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none"></div>
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Unidade</label><select id="d-unit" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase">${UNITS.map(u => `<option value="${u.id}" ${demand && demand.unidade === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}</select></div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Categoria</label><select id="d-type" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase">${DEMAND_TYPES.map(t => `<option value="${t}" ${demand && demand.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-                            <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Status</label><select id="d-status" required class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 uppercase">${DEMAND_STATUS.map(s => `<option value="${s.id}" ${demand && demand.status === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
-                        </div>
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição Detalhada</label><textarea id="d-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase font-bold border border-slate-200 outline-none" rows="5">${demand ? demand.descricao : ''}</textarea></div>
-                        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t"><button type="button" onclick="state.isRegisteringDemand=false;render();" class="py-4 bg-slate-100 rounded-xl font-black text-[9px] uppercase text-slate-500 w-full">Cancelar</button><button type="submit" class="py-4 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg w-full">Gravar</button></div>
-                    </form>
-                </div>
-            </div>`;
-        }
-
-        function renderProcessModal() {
-            const isEditing = state.editingIndex !== null;
-            const proc = isEditing ? state.processes[state.editingIndex] : null;
-            return `<div class="fixed inset-0 z-[500] flex items-center justify-center bg-black/40 p-4 fade-in">
-                <div class="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden">
-                    <div class="bg-sps-dark p-6 text-white flex justify-between items-center px-8">
-                        <span class="w-8"></span>
-                        <h3 class="text-xs font-black uppercase tracking-widest text-white">${isEditing ? 'Editar NUP' : 'Novo NUP'}</h3>
-                        <button onclick="state.isRegisteringProcess=false;render();" class="text-white">✕</button>
-                    </div>
-                    <form onsubmit="handleSaveProc(event)" class="p-8 space-y-5 text-left">
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Data</label><input id="p-date" type="text" value="${proc ? proc.data : getTodayFormatted()}" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-bold border border-slate-200 outline-none"></div>
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">NUP</label><input id="p-nup" type="text" value="${proc ? proc.nup : '47001.'}" oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-3 rounded-xl text-xs font-mono border border-slate-200 outline-none"></div>
-                        <div><label class="block text-[9px] font-black uppercase text-slate-400 mb-2">Descrição</label><textarea id="p-desc" required class="w-full bg-slate-50 p-3 rounded-xl text-xs uppercase border border-slate-200 outline-none" rows="3">${proc ? proc.descricao : ''}</textarea></div>
-                        <div class="flex gap-3 pt-4"><button type="button" onclick="state.isRegisteringProcess=false;render();" class="flex-1 py-4 bg-slate-100 rounded-xl text-[9px] font-black uppercase text-slate-400">Cancelar</button><button type="submit" class="flex-1 py-4 bg-sps-dark text-white rounded-xl text-[9px] font-black uppercase shadow-lg">Gravar</button></div>
-                    </form>
-                </div>
-            </div>`;
+                </header>
+            `;
         }
 
         function renderContent() {
@@ -737,22 +414,196 @@
                 case 'DASHBOARD': return renderDashboardHub();
                 case 'PERSONNEL': return renderPersonnel();
                 case 'PROCESSES': return renderProcesses();
-                case 'DEMANDS': return renderDemands();
-                case 'UTILITIES': return renderUtilities();
                 default: return '';
             }
         }
 
-        window.handleStartCreate = () => { state.editingIndex = null; state.isRegisteringProcess = true; render(); };
-        window.handleStartEdit = (idx) => { state.editingIndex = idx; state.isRegisteringProcess = true; render(); };
-        window.handleSaveProc = (e) => { e.preventDefault(); const d = { data: document.getElementById('p-date').value, nup: document.getElementById('p-nup').value, descricao: document.getElementById('p-desc').value }; if (state.editingIndex !== null) state.processes[state.editingIndex] = d; else state.processes.unshift(d); state.isRegisteringProcess = false; render(); };
-        window.handleStartCreateDemand = () => { state.editingDemandIndex = null; state.isRegisteringDemand = true; render(); };
-        window.handleStartEditDemand = (idx) => { state.editingDemandIndex = idx; state.isRegisteringDemand = true; render(); };
-        window.handleViewDemandDetail = (idx) => { state.viewingDemandDetailIndex = idx; render(); };
-        window.handleSaveDemand = (e) => { e.preventDefault(); const d = { data: document.getElementById('d-date').value, unidade: document.getElementById('d-unit').value, tipo: document.getElementById('d-type').value, descricao: document.getElementById('d-desc').value, status: document.getElementById('d-status').value }; if (state.editingDemandIndex !== null) state.demands[state.editingDemandIndex] = d; else state.demands.unshift(d); state.isRegisteringDemand = false; render(); };
-        window.handleLogin = (e) => { e.preventDefault(); const u = document.getElementById('l-user').value.trim(); const found = AUTHORIZED_USERS.find(x => x.username.toLowerCase() === u.toLowerCase()); if (found) { state.user = found; state.view = 'DASHBOARD'; state.loginError = null; } else { state.loginError = 'Erro de acesso'; } render(); };
+        function renderDashboardHub() {
+            const isAdmin = state.user.role === 'ADMIN';
+            return `
+                <div class="h-full w-full flex flex-col items-center justify-center py-10 px-6">
+                    <div class="max-w-4xl w-full flex flex-col items-center gap-12">
+                        <div class="text-center space-y-4 fade-in">
+                            <h1 class="text-5xl md:text-6xl font-black uppercase text-gradient tracking-tighter leading-none mb-2">Painel de Controle</h1>
+                            <div class="flex flex-col gap-1 items-center">
+                                <h2 class="text-lg md:text-xl text-slate-700 font-bold uppercase tracking-tight">Bem-vindo ao Sistema de Gestão Administrativa</h2>
+                                <p class="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Escolha uma das opções abaixo para prosseguir</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap justify-center gap-3 fade-in stagger-1">
+                            <div class="status-pill bg-emerald-50 text-emerald-600 border border-emerald-100"><div class="status-dot"></div> Módulo RH Online</div>
+                            <div class="status-pill bg-amber-50 text-amber-600 border border-amber-100"><div class="status-dot"></div> Suíte Sincronizado</div>
+                            <div class="status-pill bg-blue-50 text-blue-600 border border-blue-100"><div class="status-dot"></div> Servidor Estável</div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl pt-4 fade-in stagger-2">
+                            ${isAdmin ? `
+                            <button onclick="state.view='PERSONNEL';render();" class="nav-card p-10 rounded-[32px] border border-slate-200/50 text-left flex flex-col justify-between group h-72 shadow-xl shadow-slate-200/50">
+                                <div class="w-16 h-16 bg-sps-light text-sps-dark rounded-2xl flex items-center justify-center mb-6 shadow-inner group-hover:bg-sps-dark group-hover:text-white transition-all duration-500">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Relação do Pessoal</h3>
+                                        <span class="text-[8px] bg-sps-dark text-white px-2 py-0.5 rounded-full font-bold uppercase">Acesso Total</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 uppercase font-bold tracking-widest leading-relaxed">GESTÃO ORGANIZACIONAL DOS SERVIDORES E COLABORADORES DAS UNIDADES OPERACIONAIS CPSB</p>
+                                </div>
+                            </button>
+                            ` : ''}
+                            <button onclick="state.view='PROCESSES';render();" class="nav-card p-10 rounded-[32px] border border-slate-200/50 text-left flex flex-col justify-between group h-72 shadow-xl shadow-slate-200/50">
+                                <div class="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner group-hover:bg-amber-500 group-hover:text-white transition-all duration-500">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Processos Suite</h3>
+                                    <p class="text-[11px] text-slate-500 uppercase font-bold tracking-widest leading-relaxed">CONSULTA NUP DOS PROCESSOS GERADOS</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPersonnel() {
+            return `
+                <div class="p-10 space-y-8 fade-in">
+                    <div class="flex items-center gap-6">
+                        <button onclick="state.view='DASHBOARD';render();" class="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-all">←</button>
+                        <div>
+                            <h1 class="text-3xl font-black uppercase text-slate-800 tracking-tight leading-none">Relação do Pessoal</h1>
+                            <p class="text-[10px] font-black text-sps-primary uppercase tracking-[0.2em] mt-2">Selecione setor</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        ${UNITS.map(u => `
+                            <div class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-sps-primary transition-all shadow-sm group cursor-pointer h-40 flex flex-col justify-between">
+                                <h3 class="font-black text-slate-700 text-xs uppercase leading-tight">${u.name}</h3>
+                                <span class="text-[9px] font-black uppercase text-sps-primary tracking-widest">Acessar</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProcesses() {
+            const canEdit = state.user.role === 'ADMIN';
+            const items = state.processes.map((p, idx) => ({ ...p, originalIndex: idx }));
+            const filteredItems = items.filter(p => 
+                p.nup.toLowerCase().includes(state.processSearch.toLowerCase()) || 
+                p.descricao.toLowerCase().includes(state.processSearch.toLowerCase())
+            );
+
+            return `
+                <div class="p-10 space-y-8 fade-in">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div class="flex items-center gap-6">
+                            <button onclick="state.view='DASHBOARD';render();" class="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-all">←</button>
+                            <div>
+                                <h1 class="text-3xl font-black uppercase text-slate-800 tracking-tight">Processos Suite</h1>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total: ${state.processes.length} Registros</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="text" id="proc-search-input" placeholder="Filtrar processos..." oninput="state.processSearch=this.value;render();" value="${state.processSearch}" class="px-6 py-4 rounded-2xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-sps-primary w-full md:w-80 shadow-sm">
+                            ${canEdit ? `<button onclick="handleStartCreate()" class="bg-sps-dark text-white px-8 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all">Novo Registro</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-[32px] border border-slate-200/50 shadow-xl overflow-hidden">
+                        <table class="w-full text-left text-[11px]"><thead class="bg-slate-50/80 font-black uppercase border-b border-slate-100"><tr><th class="px-8 py-6 w-32">Data</th><th class="px-8 py-6 w-64">NUP</th><th class="px-8 py-6">Descrição do Fluxo</th>${canEdit ? `<th class="px-8 py-6 w-24 text-center">Ações</th>` : ''}</tr></thead>
+                            <tbody class="divide-y divide-slate-50">
+                                ${filteredItems.map((p) => `
+                                    <tr class="hover:bg-slate-50/50 transition-colors">
+                                        <td class="px-8 py-5 text-slate-400 font-bold">${p.data}</td>
+                                        <td class="px-8 py-5 font-mono text-sps-dark font-black">${p.nup || '---'}</td>
+                                        <td class="px-8 py-5 text-slate-800 uppercase leading-relaxed font-bold">${p.descricao || ''}</td>
+                                        ${canEdit ? `<td class="px-8 py-5 text-center"><button onclick="handleStartEdit(${p.originalIndex})" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-50 rounded-lg transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button></td>` : ''}
+                                    </tr>`).join('')}
+                                ${filteredItems.length === 0 ? `<tr><td colspan="4" class="px-8 py-20 text-center text-slate-300 italic text-[10px] uppercase font-black tracking-[0.2em]">Nenhum registro encontrado.</td></tr>` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProcessModal() {
+            const isEditing = state.editingIndex !== null;
+            return `
+                <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 fade-in">
+                    <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden animate-fadeInScale">
+                        <div class="bg-sps-dark p-8 text-white text-center"><h3 class="text-sm font-black uppercase tracking-[0.2em]">${isEditing ? 'Editar Registro Suite' : 'Novo Registro Suite'}</h3></div>
+                        <form onsubmit="handleSaveProc(event)" class="p-10 space-y-6 bg-white">
+                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Data do Registro</label><input id="p-date" type="text" placeholder="DD/MM/AAAA" required maxlength="10" oninput="this.value = maskDate(this.value)" class="w-full bg-slate-50 p-4 border border-slate-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-sps-primary font-bold"></div>
+                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">NUP (Processo)</label><input id="p-nup" type="text" placeholder="47001.XXXXXX/XXXX-XX" oninput="this.value = maskNUP(this.value)" class="w-full bg-slate-50 p-4 border border-slate-100 rounded-2xl text-xs font-mono outline-none focus:ring-2 focus:ring-sps-primary font-bold"></div>
+                            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Descrição / Assunto</label><textarea id="p-desc" placeholder="Descreva o fluxo ou assunto..." required class="w-full bg-slate-50 p-4 border border-slate-100 rounded-2xl text-xs uppercase outline-none focus:ring-2 focus:ring-sps-primary resize-y font-bold min-h-[100px]" rows="3"></textarea></div>
+                            <div class="flex gap-4 pt-4"><button type="button" onclick="state.isRegisteringProcess=false;state.editingIndex=null;render();" class="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-[10px] uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-1 py-4 bg-sps-dark text-white rounded-2xl font-black text-[10px] uppercase shadow-lg tracking-widest">Gravar</button></div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.handleStartCreate = () => {
+            state.editingIndex = null;
+            state.isRegisteringProcess = true;
+            render();
+            setTimeout(() => {
+                if (document.getElementById('p-date')) document.getElementById('p-date').value = getTodayFormatted();
+                if (document.getElementById('p-nup')) document.getElementById('p-nup').value = "47001.";
+            }, 0);
+        };
+
+        window.handleStartEdit = (idx) => {
+            state.editingIndex = Number(idx);
+            state.isRegisteringProcess = true;
+            render();
+            setTimeout(() => {
+                const p = state.processes[state.editingIndex];
+                if (document.getElementById('p-date')) document.getElementById('p-date').value = p.data;
+                if (document.getElementById('p-nup')) document.getElementById('p-nup').value = p.nup;
+                if (document.getElementById('p-desc')) document.getElementById('p-desc').value = p.descricao;
+            }, 0);
+        };
+
+        window.handleSaveProc = (e) => {
+            e.preventDefault();
+            const data = { data: document.getElementById('p-date').value, nup: document.getElementById('p-nup').value, descricao: document.getElementById('p-desc').value };
+            if (state.editingIndex !== null) state.processes[state.editingIndex] = data;
+            else state.processes.unshift(data);
+            state.isRegisteringProcess = false;
+            state.editingIndex = null;
+            render();
+        };
+
+        window.handleLogin = (e) => {
+            e.preventDefault();
+            const u = document.getElementById('l-user').value.trim();
+            const found = AUTHORIZED_USERS.find(x => x.username.toLowerCase() === u.toLowerCase());
+            if (found) { state.user = found; state.view = 'DASHBOARD'; state.loginError = null; } 
+            else { state.loginError = 'Falha na Autenticação'; }
+            render();
+        };
+        
+        window.handleRequestRegister = (e) => {
+            e.preventDefault();
+            // Lógica simulada de envio para jairton.beserra@sps.ce.gov.br
+            console.log(`Solicitação de registro enviada para ${ADMIN_EMAIL}`);
+            state.authSubView = 'SUCCESS_REGISTER';
+            render();
+        };
+
+        window.handleRequestRecover = (e) => {
+            e.preventDefault();
+            // Lógica simulada de envio para jairton.beserra@sps.ce.gov.br
+            console.log(`Solicitação de recuperação enviada para ${ADMIN_EMAIL}`);
+            state.authSubView = 'SUCCESS_RECOVER';
+            render();
+        };
 
         render();
     </script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
